@@ -67,7 +67,7 @@ fn-nginx-path-sigil() {
 }
 
 # Location config
-fn-nginx-path-computed_nginx-conf-location-sigil-path() {
+fn-nginx-path-computed-nginx-conf-location-sigil-path() {
   local APP="$1"
   local DOMAIN="$2"
   fn-nginx-path-sigil "location" "computed" "$APP" "$DOMAIN"
