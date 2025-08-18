@@ -32,7 +32,10 @@ location /{{ $app_path }}/ {
 
     {{ if eq $.STRIP_PATH "true" }}
     rewrite ^/{{ $app_path }}/(.*) /$1 break;
+    proxy_pass  http://{{ $.APP }}-{{ $upstream_port }}/;
     {{ else }}
+    # Keep the original path
+    proxy_pass  http://{{ $.APP }}-{{ $upstream_port }}/;
     {{ end }}
 
     gzip on;
@@ -59,7 +62,9 @@ location /{{ $app_path }}/ {
     proxy_set_header X-Forwarded-Proto {{ $.PROXY_X_FORWARDED_PROTO }};
     proxy_set_header X-Request-Start $msec;
     proxy_set_header X-Forwarded-Host $host;
+
     proxy_set_header X-Forwarded-Prefix /{{ $app_path }}/;
+    proxy_set_header X-Script-Name /{{ $app_path }};
     {{ if $.PROXY_X_FORWARDED_SSL }}proxy_set_header X-Forwarded-Ssl {{ $.PROXY_X_FORWARDED_SSL }};{{ end }}
   }
 
@@ -115,6 +120,10 @@ server {
 location /{{ $app_path }}/ {
     {{ if eq $.STRIP_PATH "true" }}
     rewrite ^/{{ $app_path }}/(.*) /$1 break;
+    proxy_pass  http://{{ $.APP }}-{{ $upstream_port }}/;
+    {{ else }}
+    # Keep the original path
+    proxy_pass  http://{{ $.APP }}-{{ $upstream_port }}/;
     {{ end }}
 
     gzip on;
@@ -142,7 +151,9 @@ location /{{ $app_path }}/ {
     proxy_set_header X-Forwarded-Proto {{ $.PROXY_X_FORWARDED_PROTO }};
     proxy_set_header X-Request-Start $msec;
     proxy_set_header X-Forwarded-Host $host;
+
     proxy_set_header X-Forwarded-Prefix /{{ $app_path }}/;
+    proxy_set_header X-Script-Name /{{ $app_path }};
     {{ if $.PROXY_X_FORWARDED_SSL }}proxy_set_header X-Forwarded-Ssl {{ $.PROXY_X_FORWARDED_SSL }};{{ end }}
 }
 

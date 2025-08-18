@@ -20,7 +20,7 @@ trigger-nginx-path-vhosts-proxy-build-config() {
   if [[ "$HAS_NETWORK_CONFIG" == "true" ]]; then
     plugn trigger network-build-config "$APP"
 
-    # nginx_build_config "$APP"
+    nginx_build_config "$APP"
 
     # if [[ -f "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil.$DOKKU_PID" ]]; then
     #   mv "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil.$DOKKU_PID" "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil"
@@ -28,16 +28,16 @@ trigger-nginx-path-vhosts-proxy-build-config() {
 
     while read -r file; do
       echo "mv $file ${file%.$DOKKU_PID}"
-    done < <(find "${DATA_DIRECTORY}/app-$APP/" -maxdepth 1 -type f -regex "nginx.*$DOKKU_PID\\b")  
+    done < <(find "${DATA_DIRECTORY}/app-$APP/" -maxdepth 1 -type f -regex "nginx.*$DOKKU_PID\\b")
 
     conf_dest_path_base_dir="${DATA_DIRECTORY}/app-$APP/"
     while read -r file; do
       # rm "$file"
       non_missing="${file%.missing}"
-      echo "rm ${non_missing}" 
+      echo "rm ${non_missing}"
       # test -f "$non_missing" && rm "$non_missing"
     done < <(find "$conf_dest_path_base_dir" -maxdepth 1 -type f -name "${conf_dest_path_base_dir}/*.missing")
-    
+
   else
     # nginx_clear_config "$APP"
   fi
