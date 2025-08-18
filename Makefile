@@ -12,13 +12,13 @@ GO_MOD_CACHE   ?= /tmp/dokku-go-mod-cache-$(PLUGIN_NAME)
 clean-pagesize:
 	rm -rf pagesize
 
-pagesize: clean-pagesize **/**/pagesize.go
-    GOARCH=$(GOARCH) cd src/pagesize && go build -ldflags="-s -w" $(GO_ARGS) -o ../../pagesize
+pagesize: clean-pagesize src/pagesize/pagesize.go
+	GOARCH=$(GOARCH) cd src/pagesize && go build -ldflags="-s -w" $(GO_ARGS) -o ../../pagesize
 
 clean-nginx-property:
 	rm -rf nginx-property
 
-nginx-property: clean-nginx-property **/**/*.go
+nginx-property: clean-nginx-property src/nginx-property/*.go
 	GOARCH=$(GOARCH) cd src/nginx-property && go build -ldflags="-s -w" $(GO_ARGS) -o ../../nginx-property
 
 build: $(BUILD)
