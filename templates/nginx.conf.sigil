@@ -32,11 +32,11 @@ location /{{ $app_path }}/ {
 
     {{ if eq $.STRIP_PATH "true" }}
     rewrite ^/{{ $app_path }}/(.*) /$1 break;
-    proxy_pass  http://{{ $.APP }}-{{ $upstream_port }}/;
     {{ else }}
     # Keep the original path
-    proxy_pass  http://{{ $.APP }}-{{ $upstream_port }}/;
     {{ end }}
+
+    proxy_pass  http://{{ $.APP }}-{{ $upstream_port }}/;
 
     gzip on;
     gzip_min_length  1100;
@@ -120,11 +120,11 @@ server {
 location /{{ $app_path }}/ {
     {{ if eq $.STRIP_PATH "true" }}
     rewrite ^/{{ $app_path }}/(.*) /$1 break;
-    proxy_pass  http://{{ $.APP }}-{{ $upstream_port }}/;
     {{ else }}
     # Keep the original path
-    proxy_pass  http://{{ $.APP }}-{{ $upstream_port }}/;
     {{ end }}
+
+    proxy_pass  http://{{ $.APP }}-{{ $upstream_port }}/;
 
     gzip on;
     gzip_min_length  1100;
