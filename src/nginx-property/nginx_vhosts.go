@@ -30,10 +30,11 @@ var propertyConfigs = map[string]PropertyConfig{
 	"keepalive-timeout":       {"keepalive-timeout", "75s", false},
 	"lingering-timeout":       {"lingering-timeout", "5s", false},
 
-	"app-path":    {"app-path", "", true},
-	"root-domain": {"root-domain", "", true},
-	"default-app": {"default-app", "", true},
-	"strip-path":  {"strip-path", "false", false},
+	"app-path":              {"app-path", "", true},
+	"root-domain":           {"root-domain", "", true},
+	"default-app":           {"default-app", "", true},
+	"strip-path":            {"strip-path", "false", false},
+	"underscore-in-headers": {"underscore-in-headers", "off", false},
 
 	"nginx-conf-location-sigil-path":     {"nginx-conf-location-sigil-path", "location.conf.sigil", false},
 	"nginx-conf-upstream-sigil-path":     {"nginx-conf-upstream-sigil-path", "upstream.conf.sigil", false},

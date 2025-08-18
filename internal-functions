@@ -139,7 +139,7 @@ nginx_vhosts_validate_single_func() {
     return
   fi
 
-  if nginx_vhosts_is_valid_nginx_config_func "$APP"; then
+  if nginx_vhosts_is_valid_nginx_config_func "$APP" "in_server_block"; then
     return
   fi
 
@@ -214,6 +214,10 @@ fn-nginx-path-computed-root-domain() {
 fn-nginx-path-computed-default-app() {
   declare desc="get the computed default app value"
   declare APP="$1"
+
+  if [[ -z "$APP" ]]; then
+      dokku_log_fail "App name is required for fn-nginx-path-computed-default-app"
+  fi
 
   local default_app=$(fn-get-property --app "$APP" --computed "default-app")
   if [[ -z "$default_app" ]]; then
