@@ -5,7 +5,7 @@ http {
 
   {{- if or (eq $.CONFIG_TYPE "in_http_block") (eq $.CONFIG_TYPE "upstream") }}
   include {{ $.NGINX_CONF }};
-  {{- else if or(eq $.CONFIG_TYPE "in_server_block") (eq $.CONFIG_TYPE "location") }}
+  {{- else if or (eq $.CONFIG_TYPE "in_server_block") (eq $.CONFIG_TYPE "location") }}
   server {
     listen 1010;
     include {{ $.NGINX_CONF }};

@@ -237,7 +237,7 @@ nginx_build_config() {
   declare APP="$1" DOKKU_APP_LISTEN_PORT="$2" DOKKU_APP_LISTEN_IP="$3"
   local APP_PATH="$(fn-nginx-path-computed-app-path "$APP")"
   local ROOT_DOMAIN="$(fn-nginx-path-computed-root-domain "$APP")"
-  local DEFAULT_APP="$(fn-nginx-path-computed-default-app)"
+  local DEFAULT_APP="$(fn-nginx-path-computed-default-app "$APP")"
   local VHOST_PATH="$DOKKU_ROOT/$APP/VHOST"
   local NGINX_TEMPLATE_NAME="nginx.conf.sigil"
   local NGINX_TEMPLATE="$_DIR/templates/$NGINX_TEMPLATE_NAME"

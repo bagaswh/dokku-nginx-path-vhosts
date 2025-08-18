@@ -50,7 +50,7 @@ var propertyConfigs = map[string]PropertyConfig{
 	"proxy-send-timeout":      {"proxy-send-timeout", "60s", false},
 	"x-forwarded-for-value":   {"x-forwarded-for-value", "$proxy_add_x_forwarded_for", false},
 	"x-forwarded-port-value":  {"x-forwarded-port-value", "$proxy_port", false},
-	"x-forwarded-proto-value": {"x-forwarded-proto-value", "$proxy_x_forwarded_proto", false},
+	"x-forwarded-proto-value": {"x-forwarded-proto-value", "$scheme", false},
 	"x-forwarded-ssl":         {"x-forwarded-ssl", "on", false},
 }
 
