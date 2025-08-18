@@ -32,7 +32,8 @@ server {
 location /{{ $app_path }}/ {
 
     {{ if eq $.STRIP_PATH "true" }}
-    rewrite ^/{{ $app_path }}/(.*) /$1 break;
+    {{ $regex := "(.*)" }}
+    rewrite ^/{{ $app_path }}/{{ $regex }} /$1 break;
     {{ else }}
     # Keep the original path
     {{ end }}
@@ -119,7 +120,8 @@ server {
 {{ $app_path := $.APP_PATH | default $.APP }}
 location /{{ $app_path }}/ {
     {{ if eq $.STRIP_PATH "true" }}
-    rewrite ^/{{ $app_path }}/(.*) /$1 break;
+    {{ $regex := "(.*)" }}
+    rewrite ^/{{ $app_path }}/{{ $regex }} /$1 break;
     {{ else }}
     # Keep the original path
     {{ end }}
