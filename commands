@@ -10,6 +10,34 @@ case "$1" in
     cmd-nginx-path-vhosts-vhosts-help "$@"
     ;;
 
+  nginx-path-vhosts:access-logs)
+    source "$_DIR/subcommands/access-logs"
+    ;;
+
+  nginx-path-vhosts:error-logs)
+    source "$_DIR/subcommands/error-logs"
+    ;;
+
+  nginx-path-vhosts:report)
+    cmd-nginx-path-vhosts-report "$@"
+    ;;
+
+  nginx-path-vhosts:show-config)
+    cmd-nginx-path-vhosts-show-config "$@"
+    ;;
+
+  nginx-path-vhosts:validate-config)
+    cmd-nginx-path-vhosts-validate-config "$@"
+    ;;
+
+  nginx-path-vhosts:set)
+    source "$_DIR/subcommands/set"
+    ;;
+
+  nginx-path-vhosts:get)
+    source "$_DIR/subcommands/get"
+    ;;
+
   *)
     exit "$DOKKU_NOT_IMPLEMENTED_EXIT"
     ;;
