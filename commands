@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-[[ " help nginx-path-vhosts:help " == *" $1 "* ]] || exit "$DOKKU_NOT_IMPLEMENTED_EXIT"
+#!/usr/bin/env bash
+[[ " help nginx-path-vhosts:help " == *" $1 "* ]] || [[ "$1" == "nginx-path-vhosts:"* ]] || exit "$DOKKU_NOT_IMPLEMENTED_EXIT"
 _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/help-functions"
+source "$_DIR/command-functions"
 set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
 
