@@ -40,6 +40,7 @@ trigger-nginx-path-vhosts-proxy-build-config() {
 
   else
     # nginx_clear_config "$APP"
+    :
   fi
 }
 
