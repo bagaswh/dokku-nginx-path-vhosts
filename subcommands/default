@@ -4,4 +4,4 @@ set -eo pipefail
 _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/help-functions"
 
-cmd-nginx-path-vhosts-help "nginx-path:help"
+cmd-nginx-path-vhosts-vhosts-help "nginx-path-vhosts:help"

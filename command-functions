@@ -7,9 +7,9 @@ _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/functions"
 source "$_DIR/internal-functions"
 
-cmd-nginx-path-report() {
+cmd-nginx-path-vhosts-report() {
   declare desc="displays a nginx report for one or more apps"
-  declare cmd="nginx-path:report"
+  declare cmd="nginx-path-vhosts:report"
   [[ "$1" == "$cmd" ]] && shift 1
   declare APP="$1" INFO_FLAG="$2"
 
@@ -24,14 +24,14 @@ cmd-nginx-path-report() {
 
   if [[ -z "$APP" ]]; then
     for app in $(dokku_apps); do
-      cmd-nginx-path-report-single "$app" "$INFO_FLAG" | tee || true
+      cmd-nginx-path-vhosts-report-single "$app" "$INFO_FLAG" | tee || true
     done
   else
-    cmd-nginx-path-report-single "$APP" "$INFO_FLAG"
+    cmd-nginx-path-vhosts-report-single "$APP" "$INFO_FLAG"
   fi
 }
 
-cmd-nginx-path-report-single() {
+cmd-nginx-path-vhosts-report-single() {
   declare APP="$1" INFO_FLAG="$2"
   if [[ "$INFO_FLAG" == "true" ]]; then
     INFO_FLAG=""
@@ -154,9 +154,9 @@ cmd-nginx-path-report-single() {
   fi
 }
 
-cmd-nginx-path-show-config() {
+cmd-nginx-path-vhosts-show-config() {
   declare desc="display app nginx config"
-  declare cmd="nginx-path:show-config"
+  declare cmd="nginx-path-vhosts:show-config"
   [[ "$1" == "$cmd" ]] && shift 1
   declare APP="$1"
   local proxy_type
@@ -181,9 +181,9 @@ cmd-nginx-path-show-config() {
   cat "$DOKKU_ROOT/$APP/nginx.conf"
 }
 
-# cmd-nginx-path-start() {
+# cmd-nginx-path-vhosts-start() {
 #   declare desc="starts the nginx server"
-#   declare cmd="nginx-path:start"
+#   declare cmd="nginx-path-vhosts:start"
 #   [[ "$1" == "$cmd" ]] && shift 1
 
 #   fn-plugin-property-write "nginx-path" "--global" "proxy-status" "started"
@@ -191,9 +191,9 @@ cmd-nginx-path-show-config() {
 #   fn-nginx-path-vhosts-nginx-path-init-cmd "start"
 # }
 
-# cmd-nginx-path-stop() {
+# cmd-nginx-path-vhosts-stop() {
 #   declare desc="stops the nginx server"
-#   declare cmd="nginx-path:stop"
+#   declare cmd="nginx-path-vhosts:stop"
 #   [[ "$1" == "$cmd" ]] && shift 1
 
 #   fn-plugin-property-write "nginx-path" "--global" "proxy-status" "stopped"
@@ -201,9 +201,9 @@ cmd-nginx-path-show-config() {
 #   fn-nginx-path-vhosts-nginx-path-init-cmd "disable"
 # }
 
-cmd-nginx-path-validate-config() {
+cmd-nginx-path-vhosts-validate-config() {
   declare desc="validates and optionally cleans up invalid nginx configurations"
-  declare cmd="nginx-path:validate-config"
+  declare cmd="nginx-path-vhosts:validate-config"
   [[ "$1" == "$cmd" ]] && shift 1
   declare APP="$1" FLAG="$2"
 

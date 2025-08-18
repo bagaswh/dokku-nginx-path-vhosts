@@ -5,9 +5,9 @@ source "$_DIR/../internal-functions"
 set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
 
-cmd-nginx-path-get() {
+cmd-nginx-path-vhosts-get() {
   declare desc="get nginx property for an app"
-  declare cmd="nginx-path:get"
+  declare cmd="nginx-path-vhosts:get"
   [[ "$1" == "$cmd" ]] && shift 1
   declare APP="$1" KEY="$2"
 
@@ -18,4 +18,4 @@ cmd-nginx-path-get() {
   fn-get-property --app "$APP" "$KEY"
 }
 
-cmd-nginx-path-get "$@"
+cmd-nginx-path-vhosts-get "$@"

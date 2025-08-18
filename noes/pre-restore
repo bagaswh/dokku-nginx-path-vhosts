@@ -15,7 +15,7 @@ trigger-nginx-path-pre-restore() {
     return
   fi
 
-  if ! cmd-nginx-path-start; then
+  if ! cmd-nginx-path-vhosts-start; then
     dokku_log_warn "Failed to restore nginx proxy, requests may not route as expected"
   fi
 }

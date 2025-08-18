@@ -6,4 +6,4 @@ _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/functions"
 source "$_DIR/command-functions"
 
-cmd-nginx-path-validate-config "$@"
+cmd-nginx-path-vhosts-validate-config "$@"

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-[[ " help nginx-path:help " == *" $1 "* ]] || exit "$DOKKU_NOT_IMPLEMENTED_EXIT"
+[[ " help nginx-path-vhosts:help " == *" $1 "* ]] || exit "$DOKKU_NOT_IMPLEMENTED_EXIT"
 _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/help-functions"
 set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
 
 case "$1" in
-  help | nginx-path:help)
-    cmd-nginx-path-vhosts-help "$@"
+  help | nginx-path-vhosts:help)
+    cmd-nginx-path-vhosts-vhosts-help "$@"
     ;;
 
   *)

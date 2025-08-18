@@ -24,9 +24,9 @@ fn-in-array-with-wildcard() {
   return 1
 }
 
-cmd-nginx-path-set() {
+cmd-nginx-path-vhosts-set() {
   declare desc="set or clear an nginx property for an app"
-  declare cmd="nginx-path:set"
+  declare cmd="nginx-path-vhosts:set"
   [[ "$1" == "$cmd" ]] && shift 1
   declare APP="$1" KEY="$2" VALUE="$3"
   local VALID_KEYS=("access-log-format" "app-path" "root-domain" "default-app" "access-log-path" "bind-address-ipv4" "bind-address-ipv6" "client-body-timeout" "client-header-timeout" "client-max-body-size" "disable-custom-config" "error-log-path" "hsts" "hsts-include-subdomains" "hsts-preload" "hsts-max-age" "keepalive-timeout" "lingering-timeout" "nginx-conf-location-sigil-path" "nginx-conf-location-sigil-path-*" "nginx-conf-server-block-sigil-path" "nginx-conf-server-block-sigil-path-*" "nginx-conf-http-block-sigil-path" "nginx-conf-http-block-sigil-path-*" "proxy-buffer-size" "proxy-buffering" "proxy-buffers" "proxy-busy-buffers-size" "proxy-connect-timeout" "proxy-read-timeout" "proxy-send-timeout" "send-timeout" "underscore-in-headers" "x-forwarded-for-value" "x-forwarded-port-value" "x-forwarded-proto-value" "x-forwarded-ssl")
@@ -54,4 +54,4 @@ cmd-nginx-path-set() {
   fi
 }
 
-cmd-nginx-path-set "$@"
+cmd-nginx-path-vhosts-set "$@"

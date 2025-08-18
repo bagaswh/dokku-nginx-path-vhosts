@@ -2,10 +2,10 @@
 set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
 
-cmd-nginx-path-vhosts-help() {
+cmd-nginx-path-vhosts-vhosts-help() {
   declare desc="help command"
   declare CMD="$1"
-  local plugin_name="nginx-path"
+  local plugin_name="nginx-path-vhosts"
   local plugin_description="Manage the nginx proxy"
 
   if [[ "$CMD" == "${plugin_name}:help" ]]; then
@@ -27,14 +27,14 @@ help_desc
 fn-help-content() {
   declare desc="return help content"
   cat <<help_content
-    nginx-path:access-logs <app> [-t], Show the nginx access logs for an application (-t follows)
-    nginx-path:error-logs <app> [-t], Show the nginx error logs for an application (-t follows)
-    nginx-path:report [<app>] [<flag>], Displays an nginx report for one or more apps
-    nginx-path:set <app> <property> (<value>), Set or clear an nginx property for an app
-    nginx-path:get <app> <property>, Get an nginx property for an app
-    nginx-path:show-config <app>, Display app nginx config
-    nginx-path:start, Starts the nginx server
-    nginx-path:stop, Stops the nginx server
-    nginx-path:validate-config [<app>] [--clean], Validates and optionally cleans up invalid nginx configurations
+    nginx-path-vhosts:access-logs <app> [-t], Show the nginx access logs for an application (-t follows)
+    nginx-path-vhosts:error-logs <app> [-t], Show the nginx error logs for an application (-t follows)
+    nginx-path-vhosts:report [<app>] [<flag>], Displays an nginx report for one or more apps
+    nginx-path-vhosts:set <app> <property> (<value>), Set or clear an nginx property for an app
+    nginx-path-vhosts:get <app> <property>, Get an nginx property for an app
+    nginx-path-vhosts:show-config <app>, Display app nginx config
+    nginx-path-vhosts:start, Starts the nginx server
+    nginx-path-vhosts:stop, Stops the nginx server
+    nginx-path-vhosts:validate-config [<app>] [--clean], Validates and optionally cleans up invalid nginx configurations
 help_content
 }

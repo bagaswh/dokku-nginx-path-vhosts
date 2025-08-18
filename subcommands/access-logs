@@ -5,7 +5,7 @@ source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
 _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/functions"
 
-cmd-nginx-path-logs() {
+cmd-nginx-path-vhosts-logs() {
   declare desc="display app nginx logs from command line"
   declare cmd="$1" APP="$2"
 
@@ -13,4 +13,4 @@ cmd-nginx-path-logs() {
   nginx_logs "$@"
 }
 
-cmd-nginx-path-logs "$@"
+cmd-nginx-path-vhosts-logs "$@"

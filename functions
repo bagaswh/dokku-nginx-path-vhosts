@@ -67,7 +67,7 @@ restart_nginx() {
 
 nginx_logs() {
   declare desc="display app nginx logs"
-  declare NGINX_LOGS_TYPE="${1#nginx-path:}" APP="$2"
+  declare NGINX_LOGS_TYPE="${1#nginx-path-vhosts:}" APP="$2"
   local proxy_type
 
   local NGINX_LOGS_TYPE=${NGINX_LOGS_TYPE%-logs}

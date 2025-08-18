@@ -5,6 +5,6 @@ source "$_DIR/command-functions"
 set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
 
-# cmd-nginx-path-report-single "$@"
+# cmd-nginx-path-vhosts-report-single "$@"
 
 echo "report" "$@"
