@@ -36,7 +36,7 @@ trigger-nginx-path-vhosts-proxy-build-config() {
       non_missing="${file%.missing}"
       echo "rm ${non_missing}"
       # test -f "$non_missing" && rm "$non_missing"
-    done < <(find "$conf_dest_path_base_dir" -maxdepth 1 -type f -name "${conf_dest_path_base_dir}/*.missing")
+    done < <(find "$conf_dest_path_base_dir" -maxdepth 1 -type f -wholename "${conf_dest_path_base_dir}/*.missing")
 
   else
     # nginx_clear_config "$APP"
