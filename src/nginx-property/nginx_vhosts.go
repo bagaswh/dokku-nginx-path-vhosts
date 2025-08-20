@@ -32,7 +32,7 @@ var propertyConfigs = map[string]PropertyConfig{
 
 	"app-path":              {"app-path", "", true},
 	"root-domain":           {"root-domain", "", true},
-	"default-app":           {"default-app", "", true},
+	"default-app":           {"default-app", "", false},
 	"strip-path":            {"strip-path", "false", false},
 	"underscore-in-headers": {"underscore-in-headers", "off", false},
 
