@@ -483,7 +483,7 @@ nginx_build_config() {
         mkdir -p "$DOKKU_ROOT/$PRIMARY_APP_FOR_DOMAIN/nginx.conf.d"
         cp "$APP_LOCATION_CONFIG" "$DOKKU_ROOT/$PRIMARY_APP_FOR_DOMAIN/nginx.conf.d/location-${APP}.conf"
 
-        nginx_build_config "$PRIMARY_APP_FOR_DOMAIN"
+        # nginx_build_config "$PRIMARY_APP_FOR_DOMAIN"
 
         return 0
       else
@@ -502,6 +502,7 @@ nginx_build_config() {
 
             mkdir -p "$DOKKU_ROOT/$APP/nginx.conf.d"
             generate_location_config_for_app "$other_app" "$other_app_path" "$other_upstream_ports" "$NGINX_BUILD_CONFIG_TMP_WORK_DIR" > "$DOKKU_ROOT/$APP/nginx.conf.d/location-${other_app}.conf"
+            generate_upstream_config_for_app "$other_app" "$other_upstream_ports" > "$DOKKU_ROOT/$APP/nginx.conf.d/upstream-${other_app}.conf"
         fi
         done
       fi
@@ -618,4 +619,22 @@ fn-nginx-path-computed-strip-path() {
   else
     echo "$strip_path"
   fi
+}
+
+generate_upstream_config_for_app() {
+  local app="$1"
+  local upstream_ports="$2"
+
+  for upstream_port in $upstream_ports; do
+    cat <<EOF
+# Upstream for app: $app
+upstream ${app}-${upstream_port} {
+$(plugn trigger network-get-listeners "$app" "web" |
+  while read -r listener; do
+    local listener_ip=${listener%%:*}
+    echo "  server ${listener_ip}:${upstream_port};"
+  done)
+}
+EOF
+  done
 }
