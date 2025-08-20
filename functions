@@ -249,37 +249,15 @@ nginx_build_config() {
   local PROXY_X_FORWARDED_FOR PROXY_X_FORWARDED_PORT PROXY_X_FORWARDED_PROTO PROXY_X_FORWARDED_SSL
   local ALL_APPS_FOR_DOMAIN PRIMARY_APP_FOR_DOMAIN STRIP_PATH SIGIL_PARAMS PROC_TYPE LISTENERS UPP_PROC_TYPE
 
-  # === BAGIAN 0: MEKANISME LOCKING UNTUK MENCEGAH INFINITE LOOP ===
-  ROOT_DOMAIN="$(fn-nginx-path-computed-root-domain "$APP")"
-  # Mengganti karakter non-alphanumeric pada ROOT_DOMAIN agar menjadi nama file yang valid
-  local SANITIZED_ROOT_DOMAIN="${ROOT_DOMAIN//[^a-zA-Z0-9]/_}"
-  local LOCK_FILE="/tmp/dokku-nginx-path-vhost-build-${SANITIZED_ROOT_DOMAIN}.lock"
-
-  # Mengecek apakah proses build untuk domain ini sudah berjalan
-  if ( set -o noclobber; echo "$$" > "$LOCK_FILE") 2> /dev/null;
-  then
-      # Jika belum berjalan, buat lock file dan pastikan akan dihapus setelah selesai
-      trap 'rm -f "$LOCK_FILE"; exit $?' INT TERM EXIT
-  else
-      # Jika sudah berjalan, tampilkan pesan dan keluar
-      dokku_log_info2 "Build for domain $ROOT_DOMAIN is already in progress, skipping."
-      return
-  fi
-
-  # === BAGIAN 1: LOGIKA UTAMA & PENGELOLAAN APLIKASI ===
-
   # Jika proxy dinonaktifkan untuk aplikasi ini, hapus konfigurasinya dan keluar.
   if [[ "$(plugn trigger proxy-is-enabled "$APP")" != "true" ]]; then
     dokku_log_info1 "Nginx support is disabled for app ($APP)"
-    if [[ -f "$DOKKU_ROOT/$APP/nginx.conf" ]];
-  then
+    if [[ -f "$DOKKU_ROOT/$APP/nginx.conf" ]]; then
       dokku_log_info1 "Deleting nginx.conf for $APP"
       rm -f "$DOKKU_ROOT/$APP/nginx.conf"
       rm -rf "$DOKKU_ROOT/$APP/nginx.conf.d"
       validate_nginx && restart_nginx >/dev/null
     fi
-    rm -f "$LOCK_FILE"
-    trap - INT TERM EXIT
     return
   fi
 
@@ -288,10 +266,8 @@ nginx_build_config() {
 
   # Kumpulkan semua aplikasi yang berbagi root domain yang sama
   ALL_APPS_FOR_DOMAIN=""
-  for app_check in $(dokku_apps);
-  do
-    if [[ "$(fn-nginx-path-computed-root-domain "$app_check")" == "$ROOT_DOMAIN" ]] && [[ "$(plugn trigger proxy-is-enabled "$app_check")" == "true" ]];
-  then
+  for app_check in $(dokku_apps); do
+    if [[ "$(fn-nginx-path-computed-root-domain "$app_check")" == "$ROOT_DOMAIN" ]] && [[ "$(plugn trigger proxy-is-enabled "$app_check")" == "true" ]]; then
       ALL_APPS_FOR_DOMAIN="$ALL_APPS_FOR_DOMAIN $app_check"
     fi
   done
@@ -299,56 +275,44 @@ nginx_build_config() {
 
   # Tentukan aplikasi mana yang menjadi 'default' (utama) untuk domain ini
   PRIMARY_APP_FOR_DOMAIN=""
-  for app_check in $ALL_APPS_FOR_DOMAIN;
-  do
-    if [[ "$(fn-nginx-path-computed-default-app "$app_check")" == "$app_check" ]];
-  then
+  for app_check in $ALL_APPS_FOR_DOMAIN; do
+    if [[ "$(fn-nginx-path-computed-default-app "$app_check")" == "$app_check" ]]; then
       PRIMARY_APP_FOR_DOMAIN="$app_check"
       break
     fi
   done
 
-  # Jika tidak ada aplikasi default yang ditemukan, hentikan dengan error
-  if [[ -z "$PRIMARY_APP_FOR_DOMAIN" ]];
-  then
-    dokku_log_fail "No default app set for root domain '$ROOT_DOMAIN'. Please set one with 'dokku nginx-path-vhosts:set my-default-app default-app my-default-app'"
-    rm -f "$LOCK_FILE"
-    trap - INT TERM EXIT
-    return 1
+  # Jika tidak ada aplikasi default yang ditemukan, gunakan aplikasi pertama sebagai fallback
+  if [[ -z "$PRIMARY_APP_FOR_DOMAIN" ]]; then
+    PRIMARY_APP_FOR_DOMAIN="$(echo "$ALL_APPS_FOR_DOMAIN" | awk '{print $1}')"
+    dokku_log_info2 "No explicit default app set for root domain '$ROOT_DOMAIN'. Using '$PRIMARY_APP_FOR_DOMAIN' as primary app."
   fi
 
   # Jika perintah dijalankan pada aplikasi sekunder, panggil kembali fungsi ini pada aplikasi utama
-  if [[ "$APP" != "$PRIMARY_APP_FOR_DOMAIN" ]];
-  then
+  if [[ "$APP" != "$PRIMARY_APP_FOR_DOMAIN" ]]; then
     dokku_log_info2 "Domain $ROOT_DOMAIN is managed by $PRIMARY_APP_FOR_DOMAIN. Building its config instead..."
-    rm -f "$LOCK_FILE"
-    trap - INT TERM EXIT
-    nginx_build_config "$PRIMARY_APP_FOR_DOMAIN"
+    nginx_build_config "$PRIMARY_APP_FOR_DOMAIN" "$DOKKU_APP_LISTEN_PORT" "$DOKKU_APP_LISTEN_IP"
     return
   fi
 
   # Mulai dari sini, kita tahu $APP adalah aplikasi utama
   dokku_log_info1 "Creating primary configuration for domain $ROOT_DOMAIN (managed by $APP)..."
 
-  # === BAGIAN 2: PENGGABUNGAN KONFIGURASI APLIKASI SEKUNDER ===
-
   # Buat direktori kerja sementara
   NGINX_BUILD_CONFIG_TMP_WORK_DIR=$(mktemp -d "/tmp/dokku-${DOKKU_PID}-${FUNCNAME[0]}.XXXXXX")
-  trap "rm -rf '$NGINX_BUILD_CONFIG_TMP_WORK_DIR' >/dev/null; rm -f '$LOCK_FILE'" RETURN INT TERM EXIT
+  trap "rm -rf '$NGINX_BUILD_CONFIG_TMP_WORK_DIR' >/dev/null" RETURN INT TERM EXIT
 
   # Bersihkan konfigurasi sekunder yang lama untuk memastikan kebersihan
-  rm -f "$DOKKU_ROOT/$APP/nginx.conf.d/"*.conf
+  rm -f "$DOKKU_ROOT/$APP/nginx.conf.d/"*.conf 2>/dev/null || true
 
   # Ulangi semua aplikasi di domain yang sama
   for other_app in $ALL_APPS_FOR_DOMAIN; do
-    if [[ "$other_app" != "$APP" ]];
-  then
+    if [[ "$other_app" != "$APP" ]]; then
       dokku_log_info2 "Merging config for $other_app..."
       local other_app_path="$(fn-nginx-path-computed-app-path "$other_app")"
       local other_upstream_ports=""
 
-      while read -r PORT_MAP;
-  do
+      while read -r PORT_MAP; do
         local other_upstream_port="$(awk -F ':' '{ print $3 }' <<<"$PORT_MAP")"
         other_upstream_ports="$other_upstream_ports $other_upstream_port"
       done < <(plugn trigger ports-get "$other_app")
@@ -364,17 +328,14 @@ nginx_build_config() {
   done
 
   # Hapus file nginx.conf dari semua aplikasi sekunder lainnya untuk menghindari konflik
-  for other_app in $ALL_APPS_FOR_DOMAIN;
-  do
-      if [[ "$other_app" != "$APP" ]] && [[ -f "$DOKKU_ROOT/$other_app/nginx.conf" ]];
-  then
-          dokku_log_info2 "Deleting conflicting nginx.conf from secondary app $other_app"
-          rm -f "$DOKKU_ROOT/$other_app/nginx.conf"
-          rm -rf "$DOKKU_ROOT/$other_app/nginx.conf.d"
-      fi
+  for other_app in $ALL_APPS_FOR_DOMAIN; do
+    if [[ "$other_app" != "$APP" ]] && [[ -f "$DOKKU_ROOT/$other_app/nginx.conf" ]]; then
+      dokku_log_info2 "Deleting conflicting nginx.conf from secondary app $other_app"
+      rm -f "$DOKKU_ROOT/$other_app/nginx.conf"
+      rm -rf "$DOKKU_ROOT/$other_app/nginx.conf.d"
+    fi
   done
 
-  # === BAGIAN 3: PEMBUATAN KONFIGURASI NGINX UTAMA (LOGIKA LAMA ANDA) ===
   # Kode di bawah ini adalah sisa dari fungsi Anda yang sudah benar,
   # yang mengumpulkan semua variabel dan menjalankan sigil.
   APP_PATH="$(fn-nginx-path-computed-app-path "$APP")"
@@ -387,18 +348,15 @@ nginx_build_config() {
   APP_SSL_PATH="$DOKKU_ROOT/$APP/tls"
 
   IS_APP_VHOST_ENABLED=true
-  plugn trigger domains-vhost-enabled "$APP" 2>/dev/null ||
-  IS_APP_VHOST_ENABLED=false
+  plugn trigger domains-vhost-enabled "$APP" 2>/dev/null || IS_APP_VHOST_ENABLED=false
 
   IS_SSL_ENABLED=false
-  if [[ "$(plugn trigger certs-exists "$APP")" == "true" ]];
-  then
+  if [[ "$(plugn trigger certs-exists "$APP")" == "true" ]]; then
     IS_SSL_ENABLED=true
   fi
 
   # Set up listeners with better fallback logic
-  if [[ -z "$DOKKU_APP_LISTEN_PORT" ]] && [[ -z "$DOKKU_APP_LISTEN_IP" ]];
-  then
+  if [[ -z "$DOKKU_APP_LISTEN_PORT" ]] && [[ -z "$DOKKU_APP_LISTEN_IP" ]]; then
     DOKKU_APP_LISTENERS="$(plugn trigger network-get-listeners "$APP" "web" | xargs)"
 
     # If no listeners found, try to get from running containers
@@ -427,8 +385,7 @@ nginx_build_config() {
       DOKKU_APP_LISTENERS="172.17.0.1:5000"
     fi
 
-  elif [[ -n "$DOKKU_APP_LISTEN_PORT" ]] && [[ -n "$DOKKU_APP_LISTEN_IP" ]];
-  then
+  elif [[ -n "$DOKKU_APP_LISTEN_PORT" ]] && [[ -n "$DOKKU_APP_LISTEN_IP" ]]; then
     local PASSED_LISTEN_IP_PORT=true
     DOKKU_APP_LISTENERS="$DOKKU_APP_LISTEN_IP:$DOKKU_APP_LISTEN_PORT"
   fi
@@ -439,18 +396,15 @@ nginx_build_config() {
 
   proxy_port_map=""
   PROXY_UPSTREAM_PORTS=""
-  while read -r PORT_MAP;
-  do
+  while read -r PORT_MAP; do
     local PROXY_UPSTREAM_SCHEME="$(awk -F ':' '{ print $1 }' <<<"$PORT_MAP")"
-    if [[ "$PROXY_UPSTREAM_SCHEME" == "https" ]] && [[ "$IS_SSL_ENABLED" == "false" ]];
-  then
+    if [[ "$PROXY_UPSTREAM_SCHEME" == "https" ]] && [[ "$IS_SSL_ENABLED" == "false" ]]; then
       dokku_log_warn "Ignoring detected https port mapping without an accompanying ssl certificate (${PORT_MAP})"
       continue
     fi
     proxy_port_map="$proxy_port_map $PORT_MAP"
     local PROXY_UPSTREAM_PORT="$(awk -F ':' '{ print $3 }' <<<"$PORT_MAP")"
-    if [[ "$(is_val_in_list "$PROXY_UPSTREAM_PORT" "$PROXY_UPSTREAM_PORTS" " ")" == "false" ]];
-  then
+    if [[ "$(is_val_in_list "$PROXY_UPSTREAM_PORT" "$PROXY_UPSTREAM_PORTS" " ")" == "false" ]]; then
       PROXY_UPSTREAM_PORTS+="$PROXY_UPSTREAM_PORT "
     fi
   done < <(plugn trigger ports-get "$APP")
@@ -467,33 +421,26 @@ nginx_build_config() {
   SSL_INUSE=""
   NONSSL_VHOSTS=$(plugn trigger domains-list "$APP")
   NOSSL_SERVER_NAME=$(echo "$NONSSL_VHOSTS" | xargs)
-  if [[ "$IS_SSL_ENABLED" == "true" ]];
-  then
+  if [[ "$IS_SSL_ENABLED" == "true" ]]; then
     SSL_INUSE=true
     SCHEME=https
     validate_ssl_domains "$APP"
     SSL_HOSTNAME=$(get_ssl_hostnames "$APP")
     SSL_HOSTNAME_REGEX=$(echo "$SSL_HOSTNAME" | xargs | sed 's|\.|\\.|g' | sed 's/\*/\[^\.\]\*/g' | sed 's/ /|/g')
-    if [[ "$IS_APP_VHOST_ENABLED" == "true" ]];
-  then
+    if [[ "$IS_APP_VHOST_ENABLED" == "true" ]]; then
       SSL_VHOSTS=$(grep -E "^${SSL_HOSTNAME_REGEX}$" "$VHOST_PATH" || true)
     else
       SSL_VHOSTS=$(<"$DOKKU_ROOT/VHOST")
     fi
-    for host in $SSL_VHOSTS;
-  do
-      if [[ ! $NOSSL_SERVER_NAME =~ (^|[[:space:]])$host($|[[:space:]]) ]];
-  then
+    for host in $SSL_VHOSTS; do
+      if [[ ! $NOSSL_SERVER_NAME =~ (^|[[:space:]])$host($|[[:space:]]) ]]; then
         SSL_SERVER_NAME="${host}${SSL_SERVER_NAME:+ $SSL_SERVER_NAME}"
       fi
     done
   fi
 
   NGINX_LOCATION=$(get_nginx_location)
-  if [[ -z "$NGINX_LOCATION" ]];
-  then
-    rm -f "$LOCK_FILE"
-    trap - INT TERM EXIT
+  if [[ -z "$NGINX_LOCATION" ]]; then
     exit 1
   fi
   NGINX_VERSION="$("$NGINX_LOCATION" -v 2>&1 | cut -d'/' -f 2)"
@@ -545,10 +492,8 @@ nginx_build_config() {
   fi
 
   if [[ -z "$NGINX_TEMPLATE" ]] || [[ ! -f "$NGINX_TEMPLATE" ]]; then
-      dokku_log_fail "FATAL: Nginx template could not be found."
-      rm -f "$LOCK_FILE"
-      trap - INT TERM EXIT
-      return 1
+    dokku_log_fail "FATAL: Nginx template could not be found."
+    return 1
   fi
 
   NGINX_BIND_ADDRESS_IP4="$(fn-nginx-path-computed-bind-address-ipv4 "$APP")"
@@ -606,8 +551,7 @@ nginx_build_config() {
     DEFAULT_APP="$DEFAULT_APP"
     STRIP_PATH="$STRIP_PATH")
 
-  while read -r line ||
-[[ -n "$line" ]]; do
+  while read -r line || [[ -n "$line" ]]; do
     PROC_TYPE=${line%%=*}
     LISTENERS="$(plugn trigger network-get-listeners "$APP" "$PROC_TYPE" | xargs)"
     UPP_PROC_TYPE="${PROC_TYPE^^}"
@@ -629,11 +573,6 @@ nginx_build_config() {
 
   dokku_log_verbose "Reloading nginx-path"
   validate_nginx && restart_nginx >/dev/null
-
-  # === BAGIAN 4: PEMBERSIHAN LOCK FILE ===
-  # Hapus lock file setelah proses build selesai
-  rm -f "$LOCK_FILE"
-  trap - INT TERM EXIT
 }
 
 generate_location_config_for_app() {
