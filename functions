@@ -128,26 +128,21 @@ get_custom_nginx_template() {
   declare desc="attempts to copy custom nginx template from app image"
   local APP="$1"
   local DESTINATION_FILE="$2"
-  local IMAGE_TAG="$(get_running_image_tag "$APP")"
-  local IMAGE=$(get_deploying_app_image_name "$APP" "$IMAGE_TAG")
-  local NGINX_TEMPLATE_NAME="nginx.conf.sigil"
-  local DISABLE_CUSTOM_CONFIG="$(fn-nginx-path-computed-disable-custom-config "$APP")"
+  local DISABLE_CUSTOM_CONFIG
+  DISABLE_CUSTOM_CONFIG="$(fn-nginx-path-computed-disable-custom-config "$APP")"
 
   if [[ "$DISABLE_CUSTOM_CONFIG" == "true" ]]; then
     return 1
   fi
 
-  if [[ -f "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil.$DOKKU_PID.missing" ]]; then
-    return 1
-  fi
+  local custom_template_with_pid="${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil.$DOKKU_PID"
+  local custom_template_generic="${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil"
 
-  if [[ -f "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil.$DOKKU_PID" ]]; then
-    cp "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil.$DOKKU_PID" "$DESTINATION_FILE"
+  if [[ -f "$custom_template_with_pid" ]]; then
+    cp "$custom_template_with_pid" "$DESTINATION_FILE"
     return 0
-  fi
-
-  if [[ -f "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil" ]]; then
-    cp "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil" "$DESTINATION_FILE"
+  elif [[ -f "$custom_template_generic" ]]; then
+    cp "$custom_template_generic" "$DESTINATION_FILE"
     return 0
   fi
 
@@ -500,6 +495,7 @@ nginx_build_config() {
 
     if [[ -z "$NGINX_TEMPLATE" ]] || [[ ! -f "$NGINX_TEMPLATE" ]]; then
         dokku_log_fail "FATAL: Nginx template could not be found."
+        rm -f "$LOCK_FILE"
         return 1
     fi
 
