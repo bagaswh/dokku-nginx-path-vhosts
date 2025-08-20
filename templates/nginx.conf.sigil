@@ -321,3 +321,5 @@ upstream {{ $.APP }}-{{ $upstream_port }} {
   server {{ $listener_ip }}:{{ $upstream_port }};{{ end }}
 }
 {{ end }}{{ end }}
+
+include {{ $.DOKKU_ROOT }}/{{ $.APP }}/nginx.conf.d/upstream-*.conf;
