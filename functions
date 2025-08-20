@@ -377,7 +377,33 @@ nginx_build_config() {
       local PROXY_X_FORWARDED_PROTO="$(fn-nginx-path-computed-x-forwarded-proto-value "$APP")"
       local PROXY_X_FORWARDED_SSL="$(fn-nginx-path-computed-x-forwarded-ssl "$APP")"
 
+      local DOMAIN_CONFIG_EXISTS=false
+      local PRIMARY_APP_FOR_DOMAIN=""
+
+      for existing_app in $(dokku_apps); do
+        if [[ "$existing_app" != "$APP" ]] && [[ -f "$DOKKU_ROOT/$existing_app/nginx.conf" ]]; then
+        local existing_root_domain="$(fn-nginx-path-computed-root-domain "$existing_app")"
+        if [[ "$existing_root_domain" == "$ROOT_DOMAIN" ]]; then
+            DOMAIN_CONFIG_EXISTS=true
+            PRIMARY_APP_FOR_DOMAIN="$existing_app"
+            break
+        fi
+        fi
+      done
+
+      local ALL_APPS_FOR_DOMAIN=""
+      local STRIP_PATH="$(fn-nginx-path-computed-strip-path "$APP")"
+
+      for check_app in $(dokku_apps); do
+        local check_root_domain="$(fn-nginx-path-computed-root-domain "$check_app")"
+        if [[ "$check_root_domain" == "$ROOT_DOMAIN" ]] && [[ "$(plugn trigger proxy-is-enabled "$check_app")" == "true" ]]; then
+        ALL_APPS_FOR_DOMAIN="$ALL_APPS_FOR_DOMAIN $check_app"
+        fi
+      done
+      ALL_APPS_FOR_DOMAIN="$(echo "$ALL_APPS_FOR_DOMAIN" | xargs)"
+
       eval "$(config_export app "$APP")"
+
       local SIGIL_PARAMS=(-f "$NGINX_TEMPLATE" APP="$APP" DOKKU_ROOT="$DOKKU_ROOT"
         NOSSL_SERVER_NAME="$NOSSL_SERVER_NAME"
         # Deprecated: Remove this after a few versions
@@ -424,6 +450,10 @@ nginx_build_config() {
         ROOT_DOMAIN="$ROOT_DOMAIN"
         DEFAULT_APP="$DEFAULT_APP")
 
+        ALL_APPS_FOR_DOMAIN="$ALL_APPS_FOR_DOMAIN"
+        DOMAIN_CONFIG_EXISTS="$DOMAIN_CONFIG_EXISTS"
+        PRIMARY_APP_FOR_DOMAIN="$PRIMARY_APP_FOR_DOMAIN")
+
       while read -r line || [[ -n "$line" ]]; do
         PROC_TYPE=${line%%=*}
         LISTENERS="$(plugn trigger network-get-listeners "$APP" "$PROC_TYPE" | xargs)"
@@ -442,6 +472,38 @@ nginx_build_config() {
 
       if grep NGINX_PORT "$NGINX_TEMPLATE"; then
         dokku_log_warn "Deprecated: Usage of NGINX_PORT within nginx.conf.sigil templates is deprecated in favor of PROXY_PORT"
+      fi
+
+      if [[ "$DOMAIN_CONFIG_EXISTS" == "true" ]]; then
+        dokku_log_info2 "Domain $ROOT_DOMAIN already configured by $PRIMARY_APP_FOR_DOMAIN, merging configuration..."
+
+        local APP_LOCATION_CONFIG=$(mktemp --tmpdir="${NGINX_BUILD_CONFIG_TMP_WORK_DIR}" "location-${APP}.conf.XXXXXX")
+        generate_location_config_for_app "$APP" "$APP_PATH" "$PROXY_UPSTREAM_PORTS" "$NGINX_BUILD_CONFIG_TMP_WORK_DIR" > "$APP_LOCATION_CONFIG"
+
+        mkdir -p "$DOKKU_ROOT/$PRIMARY_APP_FOR_DOMAIN/nginx.conf.d"
+        cp "$APP_LOCATION_CONFIG" "$DOKKU_ROOT/$PRIMARY_APP_FOR_DOMAIN/nginx.conf.d/location-${APP}.conf"
+
+        nginx_build_config "$PRIMARY_APP_FOR_DOMAIN"
+
+        return 0
+      else
+        dokku_log_info1 "Creating primary configuration for domain $ROOT_DOMAIN"
+
+        for other_app in $ALL_APPS_FOR_DOMAIN; do
+        if [[ "$other_app" != "$APP" ]]; then
+            local other_app_path="$(fn-nginx-path-computed-app-path "$other_app")"
+            local other_upstream_ports=""
+
+            while read -r PORT_MAP; do
+            local other_upstream_port="$(awk -F ':' '{ print $3 }' <<<"$PORT_MAP")"
+            other_upstream_ports="$other_upstream_ports $other_upstream_port"
+            done < <(plugn trigger ports-get "$other_app")
+            other_upstream_ports="$(echo "$other_upstream_ports" | xargs)"
+
+            mkdir -p "$DOKKU_ROOT/$APP/nginx.conf.d"
+            generate_location_config_for_app "$other_app" "$other_app_path" "$other_upstream_ports" "$NGINX_BUILD_CONFIG_TMP_WORK_DIR" > "$DOKKU_ROOT/$APP/nginx.conf.d/location-${other_app}.conf"
+        fi
+        done
       fi
 
       # execute sigil template processing
@@ -470,5 +532,90 @@ nginx_build_config() {
         validate_nginx && restart_nginx >/dev/null
       fi
     fi
+  fi
+}
+
+generate_location_config_for_app() {
+  local app="$1"
+  local app_path="$2"
+  local upstream_ports="$3"
+  local work_dir="$4"
+
+  local strip_path="$(fn-nginx-path-computed-strip-path "$app")"
+  local proxy_connect_timeout="$(fn-nginx-path-computed-proxy-connect-timeout "$app")"
+  local proxy_read_timeout="$(fn-nginx-path-computed-proxy-read-timeout "$app")"
+  local proxy_send_timeout="$(fn-nginx-path-computed-proxy-send-timeout "$app")"
+  local proxy_buffer_size="$(fn-nginx-path-computed-proxy-buffer-size "$app")"
+  local proxy_buffering="$(fn-nginx-path-computed-proxy-buffering "$app")"
+  local proxy_buffers="$(fn-nginx-path-computed-proxy-buffers "$app")"
+  local proxy_busy_buffers_size="$(fn-nginx-path-computed-proxy-busy-buffers-size "$app")"
+  local proxy_x_forwarded_for="$(fn-nginx-path-computed-x-forwarded-for-value "$app")"
+  local proxy_x_forwarded_port="$(fn-nginx-path-computed-x-forwarded-port-value "$app")"
+  local proxy_x_forwarded_proto="$(fn-nginx-path-computed-x-forwarded-proto-value "$app")"
+  local proxy_x_forwarded_ssl="$(fn-nginx-path-computed-x-forwarded-ssl "$app")"
+
+  for upstream_port in $upstream_ports; do
+    cat <<EOF
+# Location block for app: $app
+location /${app_path}/ {
+$(if [[ "$strip_path" == "true" ]]; then
+cat <<EOL
+    rewrite "^/${app_path}/(.*)" "/\$1" break;
+    proxy_pass http://${app}-${upstream_port}/;
+EOL
+else
+cat <<EOL
+    # Keep the original path
+    proxy_pass http://${app}-${upstream_port}/;
+EOL
+fi)
+
+    gzip on;
+    gzip_min_length  1100;
+    gzip_buffers  4 32k;
+    gzip_types    text/css text/javascript text/xml text/plain text/x-component application/javascript application/x-javascript application/wasm application/json application/xml application/rss+xml font/truetype application/x-font-ttf font/opentype application/vnd.ms-fontobject image/svg+xml;
+    gzip_vary on;
+    gzip_comp_level  6;
+
+    proxy_http_version 1.1;
+$(if [[ -n "$proxy_connect_timeout" ]]; then echo "    proxy_connect_timeout $proxy_connect_timeout;"; fi)
+$(if [[ -n "$proxy_read_timeout" ]]; then echo "    proxy_read_timeout $proxy_read_timeout;"; fi)
+$(if [[ -n "$proxy_send_timeout" ]]; then echo "    proxy_send_timeout $proxy_send_timeout;"; fi)
+    proxy_buffer_size $proxy_buffer_size;
+    proxy_buffering $proxy_buffering;
+    proxy_buffers $proxy_buffers;
+    proxy_busy_buffers_size $proxy_busy_buffers_size;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection \$http_connection;
+    proxy_set_header Host \$http_host;
+    proxy_set_header X-Forwarded-For $proxy_x_forwarded_for;
+    proxy_set_header X-Forwarded-Port $proxy_x_forwarded_port;
+    proxy_set_header X-Forwarded-Proto $proxy_x_forwarded_proto;
+    proxy_set_header X-Request-Start \$msec;
+    proxy_set_header X-Forwarded-Host \$host;
+
+    proxy_set_header X-Forwarded-Prefix /${app_path}/;
+    proxy_set_header X-Script-Name /${app_path};
+$(if [[ -n "$proxy_x_forwarded_ssl" ]]; then echo "    proxy_set_header X-Forwarded-Ssl $proxy_x_forwarded_ssl;"; fi)
+}
+
+# Redirect from /${app_path} to /${app_path}/
+location = /${app_path} {
+    return 301 \$scheme://\$host/${app_path}/;
+}
+
+EOF
+  done
+}
+
+fn-nginx-path-computed-strip-path() {
+  declare desc="get the computed strip-path value"
+  declare APP="$1"
+
+  local strip_path=$(fn-get-property --app "$APP" --computed "strip-path")
+  if [[ -z "$strip_path" ]]; then
+    echo "false"
+  else
+    echo "$strip_path"
   fi
 }
