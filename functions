@@ -134,18 +134,24 @@ get_custom_nginx_template() {
   local DISABLE_CUSTOM_CONFIG="$(fn-nginx-path-computed-disable-custom-config "$APP")"
 
   if [[ "$DISABLE_CUSTOM_CONFIG" == "true" ]]; then
-    return
+    return 1
   fi
 
   if [[ -f "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil.$DOKKU_PID.missing" ]]; then
-    return
+    return 1
   fi
 
   if [[ -f "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil.$DOKKU_PID" ]]; then
     cp "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil.$DOKKU_PID" "$DESTINATION_FILE"
-  elif [[ -f "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil" ]]; then
-    cp "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil" "$DESTINATION_FILE"
+    return 0
   fi
+
+  if [[ -f "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil" ]]; then
+    cp "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil" "$DESTINATION_FILE"
+    return 0
+  fi
+
+  return 1
 }
 
 is_tls13_available() {
@@ -477,16 +483,24 @@ nginx_build_config() {
   if [[ -z "$DOKKU_APP_LISTENERS" ]];
   then
     dokku_log_warn_quiet "No web listeners specified for $APP"
-  elif (is_deployed "$APP");
-  then
+
+  elif (is_deployed "$APP"); then
     NGINX_CONF=$(mktemp --tmpdir="${NGINX_BUILD_CONFIG_TMP_WORK_DIR}" "nginx.conf.XXXXXX")
     CUSTOM_NGINX_TEMPLATE="$NGINX_BUILD_CONFIG_TMP_WORK_DIR/$NGINX_TEMPLATE_NAME"
-    get_custom_nginx_template "$APP" "$CUSTOM_NGINX_TEMPLATE" 2>/dev/null
-    if [[ -f "$CUSTOM_NGINX_TEMPLATE" ]];
-  then
-      dokku_log_info1 'Overriding default nginx.conf with detected nginx.conf.sigil'
-      NGINX_TEMPLATE="$CUSTOM_NGINX_TEMPLATE"
-      NGINX_TEMPLATE_SOURCE="app-supplied"
+
+    if get_custom_nginx_template "$APP" "$CUSTOM_NGINX_TEMPLATE"; then
+    dokku_log_info1 'Overriding default nginx.conf with detected nginx.conf.sigil'
+    NGINX_TEMPLATE="$CUSTOM_NGINX_TEMPLATE"
+    NGINX_TEMPLATE_SOURCE="app-supplied"
+    else
+    dokku_log_info2 'No custom nginx.conf.sigil found, using built-in template.'
+    NGINX_TEMPLATE="$_DIR/templates/$NGINX_TEMPLATE_NAME"
+    NGINX_TEMPLATE_SOURCE="built-in"
+    fi
+
+    if [[ -z "$NGINX_TEMPLATE" ]] || [[ ! -f "$NGINX_TEMPLATE" ]]; then
+        dokku_log_fail "FATAL: Nginx template could not be found."
+        return 1
     fi
 
     NGINX_BIND_ADDRESS_IP4="$(fn-nginx-path-computed-bind-address-ipv4 "$APP")"
