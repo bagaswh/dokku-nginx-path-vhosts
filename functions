@@ -426,6 +426,13 @@ setup_port_mappings() {
   local port_config
   port_config=$(extract_port_mappings "$app")
 
+  export DOKKU_APP_LISTENERS="$listeners"
+  export PROXY_PORT="$proxy_port"
+  export PROXY_SSL_PORT="$proxy_ssl_port"
+
+  eval "$port_config"
+  export PROXY_PORT_MAP PROXY_UPSTREAM_PORTS
+
   cat <<EOF
 DOKKU_APP_LISTENERS="$listeners"
 PROXY_PORT="$proxy_port"
@@ -564,6 +571,7 @@ generate_location_config_for_app() {
   local app_path="$2"
   local upstream_ports="$3"
 
+  # Fallback
   local strip_path="$(fn-nginx-path-computed-strip-path "$app")"
   local proxy_connect_timeout="$(fn-nginx-path-computed-proxy-connect-timeout "$app")"
   local proxy_read_timeout="$(fn-nginx-path-computed-proxy-read-timeout "$app")"
@@ -572,10 +580,18 @@ generate_location_config_for_app() {
   local proxy_buffering="$(fn-nginx-path-computed-proxy-buffering "$app")"
   local proxy_buffers="$(fn-nginx-path-computed-proxy-buffers "$app")"
   local proxy_busy_buffers_size="$(fn-nginx-path-computed-proxy-busy-buffers-size "$app")"
+
+  # Fallback
   local proxy_x_forwarded_for="$(fn-nginx-path-computed-x-forwarded-for-value "$app")"
   local proxy_x_forwarded_port="$(fn-nginx-path-computed-x-forwarded-port-value "$app")"
   local proxy_x_forwarded_proto="$(fn-nginx-path-computed-x-forwarded-proto-value "$app")"
   local proxy_x_forwarded_ssl="$(fn-nginx-path-computed-x-forwarded-ssl "$app")"
+
+  # Fallback
+  [[ -z "$proxy_x_forwarded_for" ]] && proxy_x_forwarded_for="\$proxy_add_x_forwarded_for"
+  [[ -z "$proxy_x_forwarded_port" ]] && proxy_x_forwarded_port="\$server_port"
+  [[ -z "$proxy_x_forwarded_proto" ]] && proxy_x_forwarded_proto="\$scheme"
+  [[ -z "$proxy_x_forwarded_ssl" ]] && proxy_x_forwarded_ssl="off"
 
   if [[ -z "$upstream_ports" ]]; then
     upstream_ports="5000"
@@ -617,10 +633,12 @@ $(if [[ -n "$proxy_send_timeout" ]]; then echo "    proxy_send_timeout $proxy_se
     proxy_set_header Host \$http_host;
     proxy_set_header X-Request-Start \$msec;
     proxy_set_header X-Forwarded-Host \$host;
-
+    proxy_set_header X-Forwarded-For $proxy_x_forwarded_for;
+    proxy_set_header X-Forwarded-Port $proxy_x_forwarded_port;
+    proxy_set_header X-Forwarded-Proto $proxy_x_forwarded_proto;
     proxy_set_header X-Forwarded-Prefix /${app_path}/;
     proxy_set_header X-Script-Name /${app_path};
-$(if [[ -n "$proxy_x_forwarded_ssl" ]]; then echo "    proxy_set_header X-Forwarded-Ssl $proxy_x_forwarded_ssl;"; fi)
+    proxy_set_header X-Forwarded-Ssl $proxy_x_forwarded_ssl;
 }
 
 # Redirect from /${app_path} to /${app_path}/
@@ -736,12 +754,25 @@ get_nginx_configuration() {
   nginx_bind_address_ip4="$(fn-nginx-path-computed-bind-address-ipv4 "$app")"
   nginx_bind_address_ip6="$(fn-nginx-path-computed-bind-address-ipv6 "$app")"
   nginx_underscore_in_headers="$(fn-nginx-path-computed-underscore-in-headers "$app")"
+
+  # Fallback
   proxy_x_forwarded_for="$(fn-nginx-path-computed-x-forwarded-for-value "$app")"
   proxy_x_forwarded_port="$(fn-nginx-path-computed-x-forwarded-port-value "$app")"
   proxy_x_forwarded_proto="$(fn-nginx-path-computed-x-forwarded-proto-value "$app")"
   proxy_x_forwarded_ssl="$(fn-nginx-path-computed-x-forwarded-ssl "$app")"
 
+  # Fallback
+  [[ -z "$proxy_x_forwarded_for" ]] && proxy_x_forwarded_for="\$proxy_add_x_forwarded_for"
+  [[ -z "$proxy_x_forwarded_port" ]] && proxy_x_forwarded_port="\$server_port"
+  [[ -z "$proxy_x_forwarded_proto" ]] && proxy_x_forwarded_proto="\$scheme"
+  [[ -z "$proxy_x_forwarded_ssl" ]] && proxy_x_forwarded_ssl="off"
+
   strip_path="$(fn-nginx-path-computed-strip-path "$app")"
+
+  export PROXY_X_FORWARDED_FOR="$proxy_x_forwarded_for"
+  export PROXY_X_FORWARDED_PORT="$proxy_x_forwarded_port"
+  export PROXY_X_FORWARDED_PROTO="$proxy_x_forwarded_proto"
+  export PROXY_X_FORWARDED_SSL="$proxy_x_forwarded_ssl"
 
   cat <<EOF
 NGINX_LOCATION="$nginx_location"
