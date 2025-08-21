@@ -233,364 +233,336 @@ is_grpc_enabled() {
   echo $HAS_SUPPORT
 }
 
-nginx_build_config() {
-  declare desc="build nginx config to proxy app containers using sigil"
-  declare APP="$1" DOKKU_APP_LISTEN_PORT="$2" DOKKU_APP_LISTEN_IP="$3"
-  local APP_PATH ROOT_DOMAIN DEFAULT_APP VHOST_PATH NGINX_TEMPLATE_NAME NGINX_TEMPLATE SCHEME NGINX_TEMPLATE_SOURCE APP_SSL_PATH DOKKU_APP_LISTENERS
-  local IS_APP_VHOST_ENABLED IS_SSL_ENABLED PROXY_PORT PROXY_SSL_PORT PORT_MAP PROXY_PORT_MAP proxy_port_map PROXY_UPSTREAM_PORTS
-  local SSL_INUSE NONSSL_VHOSTS NOSSL_SERVER_NAME SSL_HOSTNAME SSL_HOSTNAME_REGEX SSL_VHOSTS SSL_SERVER_NAME host
-  local NGINX_LOCATION NGINX_VERSION SPDY_SUPPORTED TLS13_SUPPORTED HTTP2_SUPPORTED HTTP2_PUSH_SUPPORTED GRPC_SUPPORTED
-  local NGINX_LOG_ROOT NGINX_ACCESS_LOG_FORMAT NGINX_ACCESS_LOG_PATH NGINX_ERROR_LOG_PATH
-  local CLIENT_BODY_TIMEOUT CLIENT_HEADER_TIMEOUT CLIENT_MAX_BODY_SIZE KEEPALIVE_TIMEOUT LINGERING_TIMEOUT
-  local PROXY_CONNECT_TIMEOUT PROXY_READ_TIMEOUT PROXY_SEND_TIMEOUT SEND_TIMEOUT
-  local PROXY_BUFFER_SIZE PROXY_BUFFERING PROXY_BUFFERS PROXY_BUSY_BUFFERS_SIZE
-  local IMAGE_TAG IMAGE NGINX_BUILD_CONFIG_TMP_WORK_DIR NGINX_CONF CUSTOM_NGINX_TEMPLATE
-  local NGINX_BIND_ADDRESS_IP4 NGINX_BIND_ADDRESS_IP6 NGINX_UNDERSCORE_IN_HEADERS
-  local PROXY_X_FORWARDED_FOR PROXY_X_FORWARDED_PORT PROXY_X_FORWARDED_PROTO PROXY_X_FORWARDED_SSL
-  local ALL_APPS_FOR_DOMAIN PRIMARY_APP_FOR_DOMAIN STRIP_PATH SIGIL_PARAMS PROC_TYPE LISTENERS UPP_PROC_TYPE
+fn-nginx-path-computed-strip-path() {
+  declare desc="get the computed strip-path value"
+  declare APP="$1"
 
-  if [[ "$(plugn trigger proxy-is-enabled "$APP")" != "true" ]]; then
-    dokku_log_info1 "Nginx support is disabled for app ($APP)"
-    if [[ -f "$DOKKU_ROOT/$APP/nginx.conf" ]]; then
-      dokku_log_info1 "Deleting nginx.conf for $APP"
-      rm -f "$DOKKU_ROOT/$APP/nginx.conf"
-      rm -rf "$DOKKU_ROOT/$APP/nginx.conf.d"
-      validate_nginx && restart_nginx >/dev/null
-    fi
-    return
-  fi
-
-  # Get root domain
-  ROOT_DOMAIN="$(fn-nginx-path-computed-root-domain "$APP")"
-
-  # If root domain is empty, use the app name as fallback
-  if [[ -z "$ROOT_DOMAIN" ]]; then
-    ROOT_DOMAIN="$APP"
-    dokku_log_info2 "No root domain configured, using app name: $ROOT_DOMAIN"
-  fi
-
-  # Collect all apps that share the same root domain
-  ALL_APPS_FOR_DOMAIN=""
-  for app_check in $(dokku_apps); do
-    local app_check_root_domain="$(fn-nginx-path-computed-root-domain "$app_check")"
-    # Fallback
-    if [[ -z "$app_check_root_domain" ]]; then
-      app_check_root_domain="$app_check"
-    fi
-
-    if [[ "$app_check_root_domain" == "$ROOT_DOMAIN" ]] && [[ "$(plugn trigger proxy-is-enabled "$app_check")" == "true" ]]; then
-      ALL_APPS_FOR_DOMAIN="$ALL_APPS_FOR_DOMAIN $app_check"
-    fi
-  done
-  ALL_APPS_FOR_DOMAIN=$(echo "$ALL_APPS_FOR_DOMAIN" | xargs)
-
-  PRIMARY_APP_FOR_DOMAIN=""
-
-  for app_check in $ALL_APPS_FOR_DOMAIN; do
-    local explicit_default="$(fn-nginx-path-computed-default-app "$app_check")"
-    if [[ -n "$explicit_default" ]] && [[ "$explicit_default" == "$app_check" ]]; then
-      PRIMARY_APP_FOR_DOMAIN="$app_check"
-      dokku_log_info2 "Found explicit default app: $PRIMARY_APP_FOR_DOMAIN"
-      break
-    fi
-  done
-
-  if [[ -z "$PRIMARY_APP_FOR_DOMAIN" ]]; then
-    PRIMARY_APP_FOR_DOMAIN="$(echo "$ALL_APPS_FOR_DOMAIN" | tr ' ' '\n' | sort | head -1)"
-    dokku_log_info2 "No explicit default app found for domain '$ROOT_DOMAIN'. Using alphabetically first app: '$PRIMARY_APP_FOR_DOMAIN'"
-  fi
-
-  if [[ "$APP" != "$PRIMARY_APP_FOR_DOMAIN" ]]; then
-    dokku_log_info2 "Domain $ROOT_DOMAIN is managed by $PRIMARY_APP_FOR_DOMAIN. Building its config instead..."
-    nginx_build_config "$PRIMARY_APP_FOR_DOMAIN" "$DOKKU_APP_LISTEN_PORT" "$DOKKU_APP_LISTEN_IP"
-    return
-  fi
-
-  dokku_log_info1 "Creating primary configuration for domain $ROOT_DOMAIN (managed by $APP)..."
-
-  NGINX_BUILD_CONFIG_TMP_WORK_DIR=$(mktemp -d "/tmp/dokku-${DOKKU_PID}-${FUNCNAME[0]}.XXXXXX")
-  trap "rm -rf '$NGINX_BUILD_CONFIG_TMP_WORK_DIR' >/dev/null" RETURN INT TERM EXIT
-
-  rm -f "$DOKKU_ROOT/$APP/nginx.conf.d/"*.conf 2>/dev/null || true
-
-  mkdir -p "$DOKKU_ROOT/$APP/nginx.conf.d"
-
-  for other_app in $ALL_APPS_FOR_DOMAIN; do
-    if [[ "$other_app" != "$APP" ]]; then
-      dokku_log_info2 "Merging config for $other_app..."
-      local other_app_path="$(fn-nginx-path-computed-app-path "$other_app")"
-      local other_upstream_ports=""
-
-      while read -r PORT_MAP; do
-        if [[ -n "$PORT_MAP" ]]; then
-          local other_upstream_port="$(awk -F ':' '{ print $3 }' <<<"$PORT_MAP")"
-          other_upstream_ports="$other_upstream_ports $other_upstream_port"
-        fi
-      done < <(plugn trigger ports-get "$other_app" 2>/dev/null || echo "http:80:5000")
-      other_upstream_ports="$(echo "$other_upstream_ports" | xargs)"
-
-      if [[ -z "$other_upstream_ports" ]]; then
-        other_upstream_ports="5000"
-      fi
-
-      generate_location_config_for_app "$other_app" "$other_app_path" "$other_upstream_ports" "$NGINX_BUILD_CONFIG_TMP_WORK_DIR" > "$DOKKU_ROOT/$APP/nginx.conf.d/location-${other_app}.conf"
-      generate_upstream_config_for_app "$other_app" "$other_upstream_ports" > "$DOKKU_ROOT/$APP/nginx.conf.d/upstream-${other_app}.conf"
-    fi
-  done
-
-  # Remove nginx.conf from all other secondary apps
-  for other_app in $ALL_APPS_FOR_DOMAIN; do
-    if [[ "$other_app" != "$APP" ]] && [[ -f "$DOKKU_ROOT/$other_app/nginx.conf" ]]; then
-      dokku_log_info2 "Deleting conflicting nginx.conf from secondary app $other_app"
-      rm -f "$DOKKU_ROOT/$other_app/nginx.conf"
-      rm -rf "$DOKKU_ROOT/$other_app/nginx.conf.d"
-    fi
-  done
-
-  APP_PATH="$(fn-nginx-path-computed-app-path "$APP")"
-  DEFAULT_APP="$PRIMARY_APP_FOR_DOMAIN"
-  VHOST_PATH="$DOKKU_ROOT/$APP/VHOST"
-  NGINX_TEMPLATE_NAME="nginx.conf.sigil"
-  NGINX_TEMPLATE="$_DIR/templates/$NGINX_TEMPLATE_NAME"
-  SCHEME=http
-  NGINX_TEMPLATE_SOURCE="built-in"
-  APP_SSL_PATH="$DOKKU_ROOT/$APP/tls"
-
-  IS_APP_VHOST_ENABLED=true
-  plugn trigger domains-vhost-enabled "$APP" 2>/dev/null || IS_APP_VHOST_ENABLED=false
-
-  IS_SSL_ENABLED=false
-  if [[ "$(plugn trigger certs-exists "$APP")" == "true" ]]; then
-    IS_SSL_ENABLED=true
-  fi
-
-  if [[ -z "$DOKKU_APP_LISTEN_PORT" ]] && [[ -z "$DOKKU_APP_LISTEN_IP" ]]; then
-    DOKKU_APP_LISTENERS="$(plugn trigger network-get-listeners "$APP" "web" 2>/dev/null | xargs || true)"
-
-    if [[ -z "$DOKKU_APP_LISTENERS" ]]; then
-      dokku_log_info2 "No network listeners found, trying to detect from running containers..."
-
-      local container_listeners=""
-      while read -r container_ip; do
-        if [[ -n "$container_ip" ]]; then
-          container_listeners="$container_listeners $container_ip:5000"
-        fi
-      done < <(docker ps --filter "label=com.dokku.app-name=$APP" --format "{{.Names}}" 2>/dev/null | head -5 | while read -r container_name; do
-        docker inspect "$container_name" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null || true
-      done)
-
-      if [[ -n "$container_listeners" ]]; then
-        DOKKU_APP_LISTENERS="$(echo "$container_listeners" | xargs)"
-        dokku_log_info2 "Detected container listeners: $DOKKU_APP_LISTENERS"
-      fi
-    fi
-
-    if [[ -z "$DOKKU_APP_LISTENERS" ]]; then
-      dokku_log_info2 "No listeners detected, using default fallback"
-      DOKKU_APP_LISTENERS="172.17.0.1:5000"
-    fi
-
-  elif [[ -n "$DOKKU_APP_LISTEN_PORT" ]] && [[ -n "$DOKKU_APP_LISTEN_IP" ]]; then
-    local PASSED_LISTEN_IP_PORT=true
-    DOKKU_APP_LISTENERS="$DOKKU_APP_LISTEN_IP:$DOKKU_APP_LISTEN_PORT"
-  fi
-
-  plugn trigger ports-configure "$APP" 2>/dev/null || true
-  PROXY_PORT=$(config_get "$APP" DOKKU_PROXY_PORT || echo "80")
-  PROXY_SSL_PORT=$(config_get "$APP" DOKKU_PROXY_SSL_PORT || echo "443")
-
-  proxy_port_map=""
-  PROXY_UPSTREAM_PORTS=""
-
-  while read -r PORT_MAP; do
-    if [[ -n "$PORT_MAP" ]]; then
-      local PROXY_UPSTREAM_SCHEME="$(awk -F ':' '{ print $1 }' <<<"$PORT_MAP")"
-      if [[ "$PROXY_UPSTREAM_SCHEME" == "https" ]] && [[ "$IS_SSL_ENABLED" == "false" ]]; then
-        dokku_log_warn "Ignoring detected https port mapping without an accompanying ssl certificate (${PORT_MAP})"
-        continue
-      fi
-      proxy_port_map="$proxy_port_map $PORT_MAP"
-      local PROXY_UPSTREAM_PORT="$(awk -F ':' '{ print $3 }' <<<"$PORT_MAP")"
-      if [[ "$(is_val_in_list "$PROXY_UPSTREAM_PORT" "$PROXY_UPSTREAM_PORTS" " ")" == "false" ]]; then
-        PROXY_UPSTREAM_PORTS+="$PROXY_UPSTREAM_PORT "
-      fi
-    fi
-  done < <(plugn trigger ports-get "$APP" 2>/dev/null || echo "http:80:5000")
-
-  PROXY_PORT_MAP="$(echo "$proxy_port_map" | xargs)"
-  PROXY_UPSTREAM_PORTS="$(echo "$PROXY_UPSTREAM_PORTS" | xargs)"
-
-  if [[ -z "$PROXY_UPSTREAM_PORTS" ]]; then
-    dokku_log_info2 "No upstream ports detected, using default port 5000"
-    PROXY_UPSTREAM_PORTS="5000"
-    PROXY_PORT_MAP="http:80:5000"
-  fi
-
-  SSL_INUSE=""
-  NONSSL_VHOSTS=$(plugn trigger domains-list "$APP" 2>/dev/null || echo "$ROOT_DOMAIN")
-  NOSSL_SERVER_NAME=$(echo "$NONSSL_VHOSTS" | xargs)
-  if [[ "$IS_SSL_ENABLED" == "true" ]]; then
-    SSL_INUSE=true
-    SCHEME=https
-    validate_ssl_domains "$APP"
-    SSL_HOSTNAME=$(get_ssl_hostnames "$APP")
-    SSL_HOSTNAME_REGEX=$(echo "$SSL_HOSTNAME" | xargs | sed 's|\.|\\.|g' | sed 's/\*/\[^\.\]\*/g' | sed 's/ /|/g')
-    if [[ "$IS_APP_VHOST_ENABLED" == "true" ]]; then
-      SSL_VHOSTS=$(grep -E "^${SSL_HOSTNAME_REGEX}$" "$VHOST_PATH" 2>/dev/null || true)
-    else
-      SSL_VHOSTS=$(<"$DOKKU_ROOT/VHOST" 2>/dev/null || echo "$ROOT_DOMAIN")
-    fi
-    for host in $SSL_VHOSTS; do
-      if [[ ! $NOSSL_SERVER_NAME =~ (^|[[:space:]])$host($|[[:space:]]) ]]; then
-        SSL_SERVER_NAME="${host}${SSL_SERVER_NAME:+ $SSL_SERVER_NAME}"
-      fi
-    done
-  fi
-
-  NGINX_LOCATION=$(get_nginx_location)
-  if [[ -z "$NGINX_LOCATION" ]]; then
-    dokku_log_fail "Could not find nginx binary"
-    exit 1
-  fi
-  NGINX_VERSION="$("$NGINX_LOCATION" -v 2>&1 | cut -d'/' -f 2)"
-  SPDY_SUPPORTED="false"
-  TLS13_SUPPORTED="$(is_tls13_available "$NGINX_VERSION")"
-  HTTP2_SUPPORTED="$(is_http2_enabled "$NGINX_VERSION")"
-  HTTP2_PUSH_SUPPORTED="$(is_http2_push_enabled "$NGINX_VERSION")"
-  GRPC_SUPPORTED="$(is_grpc_enabled "$NGINX_VERSION")"
-
-  NGINX_LOG_ROOT="$(fn-nginx-path-log-root)"
-  NGINX_ACCESS_LOG_FORMAT="$(fn-nginx-path-computed-access-log-format "$APP")"
-  NGINX_ACCESS_LOG_PATH="$(fn-nginx-path-computed-access-log-path "$APP")"
-  NGINX_ERROR_LOG_PATH="$(fn-nginx-path-computed-error-log-path "$APP")"
-  CLIENT_BODY_TIMEOUT="$(fn-nginx-path-computed-client-body-timeout "$APP")"
-  CLIENT_HEADER_TIMEOUT="$(fn-nginx-path-computed-client-header-timeout "$APP")"
-  CLIENT_MAX_BODY_SIZE="$(fn-nginx-path-computed-client-max-body-size "$APP")"
-  KEEPALIVE_TIMEOUT="$(fn-nginx-path-computed-keepalive-timeout "$APP")"
-  LINGERING_TIMEOUT="$(fn-nginx-path-computed-lingering-timeout "$APP")"
-  PROXY_CONNECT_TIMEOUT="$(fn-nginx-path-computed-proxy-connect-timeout "$APP")"
-  PROXY_READ_TIMEOUT="$(fn-nginx-path-computed-proxy-read-timeout "$APP")"
-  PROXY_SEND_TIMEOUT="$(fn-nginx-path-computed-proxy-send-timeout "$APP")"
-  SEND_TIMEOUT="$(fn-nginx-path-computed-send-timeout "$APP")"
-  PROXY_BUFFER_SIZE="$(fn-nginx-path-computed-proxy-buffer-size "$APP")"
-  PROXY_BUFFERING="$(fn-nginx-path-computed-proxy-buffering "$APP")"
-  PROXY_BUFFERS="$(fn-nginx-path-computed-proxy-buffers "$APP")"
-  PROXY_BUSY_BUFFERS_SIZE="$(fn-nginx-path-computed-proxy-busy-buffers-size "$APP")"
-
-  dokku_log_info2 "Using listeners: $DOKKU_APP_LISTENERS"
-  dokku_log_info2 "Using upstream ports: $PROXY_UPSTREAM_PORTS"
-  dokku_log_info2 "Using port map: $PROXY_PORT_MAP"
-
-  if ! (is_deployed "$APP" 2>/dev/null); then
-    dokku_log_warn_quiet "App $APP may not be fully deployed, but generating nginx config anyway"
-  fi
-
-  NGINX_CONF=$(mktemp --tmpdir="${NGINX_BUILD_CONFIG_TMP_WORK_DIR}" "nginx.conf.XXXXXX")
-  CUSTOM_NGINX_TEMPLATE="$NGINX_BUILD_CONFIG_TMP_WORK_DIR/$NGINX_TEMPLATE_NAME"
-
-  if get_custom_nginx_template "$APP" "$CUSTOM_NGINX_TEMPLATE"; then
-    dokku_log_info1 'Overriding default nginx.conf with detected nginx.conf.sigil'
-    NGINX_TEMPLATE="$CUSTOM_NGINX_TEMPLATE"
-    NGINX_TEMPLATE_SOURCE="app-supplied"
+  local strip_path=$(fn-get-property --app "$APP" --computed "strip-path")
+  if [[ -z "$strip_path" ]]; then
+    echo "false"
   else
-    dokku_log_info2 'No custom nginx.conf.sigil found, using built-in template.'
-    NGINX_TEMPLATE="$_DIR/templates/$NGINX_TEMPLATE_NAME"
-    NGINX_TEMPLATE_SOURCE="built-in"
+    echo "$strip_path"
   fi
+}
 
-  if [[ -z "$NGINX_TEMPLATE" ]] || [[ ! -f "$NGINX_TEMPLATE" ]]; then
-    dokku_log_fail "FATAL: Nginx template could not be found."
+validate_proxy_enabled() {
+  local app="$1"
+
+  if [[ "$(plugn trigger proxy-is-enabled "$app")" != "true" ]]; then
+    dokku_log_info1 "Nginx support is disabled for app ($app)"
+    cleanup_disabled_app_config "$app"
     return 1
   fi
+  return 0
+}
 
-  NGINX_BIND_ADDRESS_IP4="$(fn-nginx-path-computed-bind-address-ipv4 "$APP")"
-  NGINX_BIND_ADDRESS_IP6="$(fn-nginx-path-computed-bind-address-ipv6 "$APP")"
-  NGINX_UNDERSCORE_IN_HEADERS="$(fn-nginx-path-computed-underscore-in-headers "$APP")"
-  PROXY_X_FORWARDED_FOR="$(fn-nginx-path-computed-x-forwarded-for-value "$APP")"
-  PROXY_X_FORWARDED_PORT="$(fn-nginx-path-computed-x-forwarded-port-value "$APP")"
-  PROXY_X_FORWARDED_PROTO="$(fn-nginx-path-computed-x-forwarded-proto-value "$APP")"
-  PROXY_X_FORWARDED_SSL="$(fn-nginx-path-computed-x-forwarded-ssl "$APP")"
+cleanup_disabled_app_config() {
+  local app="$1"
 
-  STRIP_PATH="$(fn-nginx-path-computed-strip-path "$APP")"
+  if [[ -f "$DOKKU_ROOT/$app/nginx.conf" ]]; then
+    dokku_log_info1 "Deleting nginx.conf for $app"
+    rm -f "$DOKKU_ROOT/$app/nginx.conf"
+    rm -rf "$DOKKU_ROOT/$app/nginx.conf.d"
+    validate_nginx && restart_nginx >/dev/null
+  fi
+}
 
-  eval "$(config_export app "$APP" 2>/dev/null || true)"
-  SIGIL_PARAMS=(-f "$NGINX_TEMPLATE" APP="$APP" DOKKU_ROOT="$DOKKU_ROOT"
-    NOSSL_SERVER_NAME="$NOSSL_SERVER_NAME"
-    DOKKU_APP_LISTENERS="$DOKKU_APP_LISTENERS"
-    DOKKU_LIB_ROOT="$DOKKU_LIB_ROOT"
-    PASSED_LISTEN_IP_PORT="${PASSED_LISTEN_IP_PORT:-}"
-    SPDY_SUPPORTED="$SPDY_SUPPORTED"
-    TLS13_SUPPORTED="$TLS13_SUPPORTED"
-    HTTP2_SUPPORTED="$HTTP2_SUPPORTED"
-    NGINX_LOG_ROOT="$NGINX_LOG_ROOT"
-    NGINX_ACCESS_LOG_FORMAT="$NGINX_ACCESS_LOG_FORMAT"
-    NGINX_ACCESS_LOG_PATH="$NGINX_ACCESS_LOG_PATH"
-    NGINX_ERROR_LOG_PATH="$NGINX_ERROR_LOG_PATH"
-    NGINX_BIND_ADDRESS_IP4="$NGINX_BIND_ADDRESS_IP4"
-    NGINX_BIND_ADDRESS_IP6="$NGINX_BIND_ADDRESS_IP6"
-    HTTP2_PUSH_SUPPORTED="$HTTP2_PUSH_SUPPORTED"
-    GRPC_SUPPORTED="$GRPC_SUPPORTED"
-    DOKKU_APP_LISTEN_PORT="$DOKKU_APP_LISTEN_PORT" DOKKU_APP_LISTEN_IP="$DOKKU_APP_LISTEN_IP"
-    APP_SSL_PATH="$APP_SSL_PATH" SSL_INUSE="$SSL_INUSE" SSL_SERVER_NAME="$SSL_SERVER_NAME"
-    CLIENT_BODY_TIMEOUT="$CLIENT_BODY_TIMEOUT"
-    CLIENT_HEADER_TIMEOUT="$CLIENT_HEADER_TIMEOUT"
-    CLIENT_MAX_BODY_SIZE="$CLIENT_MAX_BODY_SIZE"
-    KEEPALIVE_TIMEOUT="$KEEPALIVE_TIMEOUT"
-    LINGERING_TIMEOUT="$LINGERING_TIMEOUT"
-    PROXY_CONNECT_TIMEOUT="$PROXY_CONNECT_TIMEOUT"
-    PROXY_READ_TIMEOUT="$PROXY_READ_TIMEOUT"
-    PROXY_SEND_TIMEOUT="$PROXY_SEND_TIMEOUT"
-    SEND_TIMEOUT="$SEND_TIMEOUT"
-    PROXY_BUFFER_SIZE="$PROXY_BUFFER_SIZE"
-    PROXY_BUFFERING="$PROXY_BUFFERING"
-    PROXY_BUFFERS="$PROXY_BUFFERS"
-    PROXY_BUSY_BUFFERS_SIZE="$PROXY_BUSY_BUFFERS_SIZE"
-    NGINX_UNDERSCORE_IN_HEADERS="$NGINX_UNDERSCORE_IN_HEADERS"
-    NGINX_PORT="$PROXY_PORT" NGINX_SSL_PORT="$PROXY_SSL_PORT"
-    PROXY_PORT="$PROXY_PORT" PROXY_SSL_PORT="$PROXY_SSL_PORT"
-    PROXY_PORT_MAP="$PROXY_PORT_MAP" PROXY_UPSTREAM_PORTS="$PROXY_UPSTREAM_PORTS"
-    PROXY_X_FORWARDED_FOR="$PROXY_X_FORWARDED_FOR"
-    PROXY_X_FORWARDED_PORT="$PROXY_X_FORWARDED_PORT"
-    PROXY_X_FORWARDED_PROTO="$PROXY_X_FORWARDED_PROTO"
-    PROXY_X_FORWARDED_SSL="$PROXY_X_FORWARDED_SSL"
-    APP_PATH="$APP_PATH"
-    ROOT_DOMAIN="$ROOT_DOMAIN"
-    DEFAULT_APP="$DEFAULT_APP"
-    STRIP_PATH="$STRIP_PATH")
+setup_build_environment() {
+  local app="$1"
+  local work_dir
 
-  while read -r line || [[ -n "$line" ]]; do
-    if [[ -n "$line" ]]; then
-      PROC_TYPE=${line%%=*}
-      LISTENERS="$(plugn trigger network-get-listeners "$APP" "$PROC_TYPE" 2>/dev/null | xargs || true)"
-      UPP_PROC_TYPE="${PROC_TYPE^^}"
-      UPP_PROC_TYPE="${UPP_PROC_TYPE//-/_}"
-      SIGIL_PARAMS+=("DOKKU_APP_${UPP_PROC_TYPE}_LISTENERS=$LISTENERS")
+  work_dir=$(mktemp -d "/tmp/dokku-${DOKKU_PID}-nginx-build.XXXXXX")
+  rm -f "$DOKKU_ROOT/$app/nginx.conf.d/"*.conf 2>/dev/null || true
+  mkdir -p "$DOKKU_ROOT/$app/nginx.conf.d"
+
+  echo "$work_dir"
+}
+
+cleanup_build_environment() {
+  local work_dir="$1"
+  rm -rf "$work_dir" >/dev/null 2>&1 || true
+}
+
+setup_domain_management() {
+  local app="$1"
+  local root_domain all_apps_for_domain primary_app
+
+  root_domain="$(fn-nginx-path-computed-root-domain "$app")"
+  [[ -z "$root_domain" ]] && root_domain="$app"
+
+  all_apps_for_domain=$(get_apps_for_domain "$root_domain")
+  primary_app=$(determine_primary_app "$all_apps_for_domain")
+
+  cat <<EOF
+ROOT_DOMAIN="$root_domain"
+ALL_APPS_FOR_DOMAIN="$all_apps_for_domain"
+PRIMARY_APP_FOR_DOMAIN="$primary_app"
+EOF
+}
+
+get_apps_for_domain() {
+  local root_domain="$1"
+  local apps=""
+
+  for app in $(dokku_apps); do
+    local app_root_domain="$(fn-nginx-path-computed-root-domain "$app")"
+    [[ -z "$app_root_domain" ]] && app_root_domain="$app"
+
+    if [[ "$app_root_domain" == "$root_domain" ]] &&
+       [[ "$(plugn trigger proxy-is-enabled "$app")" == "true" ]]; then
+      apps="$apps $app"
     fi
-  done < <(plugn trigger ps-current-scale "$APP" 2>/dev/null || echo "web=1")
+  done
 
-  xargs -i echo "-----> Configuring {}...(using $NGINX_TEMPLATE_SOURCE template)" <<<"$(echo "${SSL_VHOSTS:-}" "${NONSSL_VHOSTS}" | tr ' ' '\n' | sort -u)"
+  echo "$apps" | xargs
+}
 
-  dokku_log_info2 "Generating nginx configuration..."
-  if ! sigil "${SIGIL_PARAMS[@]}" | cat -s >"$NGINX_CONF"; then
-    dokku_log_fail "Failed to generate nginx configuration using sigil"
-    return 1
+determine_primary_app() {
+  local all_apps="$1"
+
+  for app in $all_apps; do
+    local explicit_default="$(fn-nginx-path-computed-default-app "$app")"
+    if [[ -n "$explicit_default" ]] && [[ "$explicit_default" == "$app" ]]; then
+      echo "$app"
+      return
+    fi
+  done
+
+  echo "$all_apps" | tr ' ' '\n' | sort | head -1
+}
+
+should_manage_domain() {
+  local app="$1"
+  local domain_config="$2"
+
+  eval "$domain_config"
+  [[ "$app" == "$PRIMARY_APP_FOR_DOMAIN" ]]
+}
+
+delegate_to_primary_app() {
+  local app="$1"
+  local domain_config="$2"
+  local listen_port="$3"
+  local listen_ip="$4"
+
+  eval "$domain_config"
+  dokku_log_info2 "Domain $ROOT_DOMAIN is managed by $PRIMARY_APP_FOR_DOMAIN. Building its config instead..."
+  nginx_build_config "$PRIMARY_APP_FOR_DOMAIN" "$listen_port" "$listen_ip"
+}
+
+configure_ssl_settings() {
+  local app="$1"
+  local is_ssl_enabled ssl_config
+
+  is_ssl_enabled="false"
+  [[ "$(plugn trigger certs-exists "$app")" == "true" ]] && is_ssl_enabled="true"
+
+  if [[ "$is_ssl_enabled" == "true" ]]; then
+    ssl_config=$(generate_ssl_configuration "$app")
+  else
+    ssl_config="SSL_INUSE='' SSL_SERVER_NAME='' SSL_VHOSTS=''"
   fi
 
-  dokku_log_info1 "Creating $SCHEME nginx.conf for $APP"
-  mv "$NGINX_CONF" "$DOKKU_ROOT/$APP/nginx.conf"
+  echo "IS_SSL_ENABLED=\"$is_ssl_enabled\" $ssl_config"
+}
 
-  fn-nginx-path-vhosts-manage-hsts "$APP" "$SSL_INUSE"
-  plugn trigger nginx-path-pre-reload "$APP" "$DOKKU_APP_LISTEN_PORT" "$DOKKU_APP_LISTEN_IP" 2>/dev/null || true
+generate_ssl_configuration() {
+  local app="$1"
+  local ssl_hostname ssl_vhosts ssl_server_name
 
-  dokku_log_verbose "Reloading nginx-path"
-  validate_nginx && restart_nginx >/dev/null
+  validate_ssl_domains "$app"
+  ssl_hostname=$(get_ssl_hostnames "$app")
+
+  local vhost_path="$DOKKU_ROOT/$app/VHOST"
+  local ssl_hostname_regex
+  ssl_hostname_regex=$(echo "$ssl_hostname" | xargs | sed 's|\.|\\.|g' | sed 's/\*/\[^\.\]\*/g' | sed 's/ /|/g')
+
+  if [[ "$(plugn trigger domains-vhost-enabled "$app" 2>/dev/null || echo true)" == "true" ]]; then
+    ssl_vhosts=$(grep -E "^${ssl_hostname_regex}$" "$vhost_path" 2>/dev/null || true)
+  else
+    ssl_vhosts=$(<"$DOKKU_ROOT/VHOST" 2>/dev/null || echo "$(fn-nginx-path-computed-root-domain "$app")")
+  fi
+
+  local nonssl_vhosts
+  nonssl_vhosts=$(plugn trigger domains-list "$app" 2>/dev/null || echo "$(fn-nginx-path-computed-root-domain "$app")")
+  local nossl_server_name
+  nossl_server_name=$(echo "$nonssl_vhosts" | xargs)
+
+  for host in $ssl_vhosts; do
+    if [[ ! $nossl_server_name =~ (^|[[:space:]])$host($|[[:space:]]) ]]; then
+      ssl_server_name="${host}${ssl_server_name:+ $ssl_server_name}"
+    fi
+  done
+
+  cat <<EOF
+SSL_INUSE="true"
+SSL_HOSTNAME="$ssl_hostname"
+SSL_VHOSTS="$ssl_vhosts"
+SSL_SERVER_NAME="$ssl_server_name"
+NONSSL_VHOSTS="$nonssl_vhosts"
+NOSSL_SERVER_NAME="$nossl_server_name"
+EOF
+}
+
+setup_port_mappings() {
+  local app="$1"
+  local listen_port="$2"
+  local listen_ip="$3"
+
+  local listeners port_map upstream_ports
+
+  if [[ -n "$listen_port" ]] && [[ -n "$listen_ip" ]]; then
+    listeners="$listen_ip:$listen_port"
+  else
+    listeners=$(get_app_listeners "$app")
+  fi
+
+  plugn trigger ports-configure "$app" 2>/dev/null || true
+
+  local proxy_port proxy_ssl_port
+  proxy_port=$(config_get "$app" DOKKU_PROXY_PORT || echo "80")
+  proxy_ssl_port=$(config_get "$app" DOKKU_PROXY_SSL_PORT || echo "443")
+
+  local port_config
+  port_config=$(extract_port_mappings "$app")
+
+  cat <<EOF
+DOKKU_APP_LISTENERS="$listeners"
+PROXY_PORT="$proxy_port"
+PROXY_SSL_PORT="$proxy_ssl_port"
+$port_config
+EOF
+}
+
+get_app_listeners() {
+  local app="$1"
+  local listeners
+
+  listeners="$(plugn trigger network-get-listeners "$app" "web" 2>/dev/null | xargs || true)"
+
+  if [[ -z "$listeners" ]]; then
+    dokku_log_info2 "No network listeners found, trying to detect from running containers..."
+
+    local container_listeners=""
+    while read -r container_ip; do
+      if [[ -n "$container_ip" ]]; then
+        container_listeners="$container_listeners $container_ip:5000"
+      fi
+    done < <(docker ps --filter "label=com.dokku.app-name=$app" --format "{{.Names}}" 2>/dev/null | head -5 | while read -r container_name; do
+      docker inspect "$container_name" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null || true
+    done)
+
+    if [[ -n "$container_listeners" ]]; then
+      listeners="$(echo "$container_listeners" | xargs)"
+      dokku_log_info2 "Detected container listeners: $listeners"
+    fi
+  fi
+
+  if [[ -z "$listeners" ]]; then
+    dokku_log_info2 "No listeners detected, using default fallback"
+    listeners="172.17.0.1:5000"
+  fi
+
+  echo "$listeners"
+}
+
+extract_port_mappings() {
+  local app="$1"
+  local proxy_port_map="" upstream_ports=""
+
+  while IFS= read -r port_map; do
+    [[ -z "$port_map" ]] && continue
+
+    local scheme port
+    scheme="$(awk -F ':' '{ print $1 }' <<<"$port_map")"
+    port="$(awk -F ':' '{ print $3 }' <<<"$port_map")"
+
+    if [[ "$scheme" == "https" ]] && [[ "$(plugn trigger certs-exists "$app")" != "true" ]]; then
+      dokku_log_warn "Ignoring detected https port mapping without an accompanying ssl certificate (${port_map})"
+      continue
+    fi
+
+    proxy_port_map="$proxy_port_map $port_map"
+    if [[ "$(is_val_in_list "$port" "$upstream_ports" " ")" == "false" ]]; then
+      upstream_ports="$upstream_ports $port"
+    fi
+  done < <(plugn trigger ports-get "$app" 2>/dev/null || echo "http:80:5000")
+
+  proxy_port_map=$(echo "$proxy_port_map" | xargs)
+  upstream_ports=$(echo "$upstream_ports" | xargs)
+
+  [[ -z "$upstream_ports" ]] && upstream_ports="5000"
+  [[ -z "$proxy_port_map" ]] && proxy_port_map="http:80:5000"
+
+  cat <<EOF
+PROXY_PORT_MAP="$proxy_port_map"
+PROXY_UPSTREAM_PORTS="$upstream_ports"
+EOF
+}
+
+generate_secondary_app_configs() {
+  local primary_app="$1"
+  local domain_config="$2"
+  local work_dir="$3"
+
+  eval "$domain_config"
+
+  for app in $ALL_APPS_FOR_DOMAIN; do
+    [[ "$app" == "$primary_app" ]] && continue
+
+    dokku_log_info2 "Merging config for $app..."
+    generate_app_configs "$app" "$primary_app" "$work_dir"
+    cleanup_secondary_app_nginx_conf "$app"
+  done
+}
+
+generate_app_configs() {
+  local app="$1"
+  local primary_app="$2"
+  local work_dir="$3"
+
+  local app_path upstream_ports
+  app_path="$(fn-nginx-path-computed-app-path "$app")"
+  upstream_ports=$(get_upstream_ports_for_app "$app")
+
+  generate_location_config_for_app "$app" "$app_path" "$upstream_ports" \
+    > "$DOKKU_ROOT/$primary_app/nginx.conf.d/location-${app}.conf"
+
+  generate_upstream_config_for_app "$app" "$upstream_ports" \
+    > "$DOKKU_ROOT/$primary_app/nginx.conf.d/upstream-${app}.conf"
+}
+
+get_upstream_ports_for_app() {
+  local app="$1"
+  local upstream_ports=""
+
+  while IFS= read -r port_map; do
+    [[ -n "$port_map" ]] || continue
+    local port
+    port="$(awk -F ':' '{ print $3 }' <<<"$port_map")"
+    upstream_ports="$upstream_ports $port"
+  done < <(plugn trigger ports-get "$app" 2>/dev/null || echo "http:80:5000")
+
+  upstream_ports=$(echo "$upstream_ports" | xargs)
+  [[ -z "$upstream_ports" ]] && upstream_ports="5000"
+
+  echo "$upstream_ports"
+}
+
+cleanup_secondary_app_nginx_conf() {
+  local app="$1"
+
+  if [[ -f "$DOKKU_ROOT/$app/nginx.conf" ]]; then
+    dokku_log_info2 "Deleting conflicting nginx.conf from secondary app $app"
+    rm -f "$DOKKU_ROOT/$app/nginx.conf"
+    rm -rf "$DOKKU_ROOT/$app/nginx.conf.d"
+  fi
 }
 
 generate_location_config_for_app() {
   local app="$1"
   local app_path="$2"
   local upstream_ports="$3"
-  local work_dir="$4"
 
   local strip_path="$(fn-nginx-path-computed-strip-path "$app")"
   local proxy_connect_timeout="$(fn-nginx-path-computed-proxy-connect-timeout "$app")"
@@ -660,18 +632,6 @@ EOF
   done
 }
 
-fn-nginx-path-computed-strip-path() {
-  declare desc="get the computed strip-path value"
-  declare APP="$1"
-
-  local strip_path=$(fn-get-property --app "$APP" --computed "strip-path")
-  if [[ -z "$strip_path" ]]; then
-    echo "false"
-  else
-    echo "$strip_path"
-  fi
-}
-
 generate_upstream_config_for_app() {
   local app="$1"
   local upstream_ports="$2"
@@ -685,7 +645,6 @@ generate_upstream_config_for_app() {
 # Upstream for app: $app
 upstream ${app}-${upstream_port} {
 $(
-
 listeners=$(plugn trigger network-get-listeners "$app" "web" | xargs)
 
 if [[ -n "$listeners" ]]; then
@@ -694,7 +653,6 @@ if [[ -n "$listeners" ]]; then
     echo "  server ${listener_ip}:${upstream_port};"
   done
 else
-
   docker ps --filter "name=${app}" --format "table {{.Names}}" | grep -v "NAMES" | head -5 | while read -r container_name; do
     if [[ -n "$container_name" ]]; then
       container_ip=$(docker inspect "$container_name" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null || true)
@@ -712,4 +670,266 @@ fi
 }
 EOF
   done
+}
+
+finalize_nginx_config() {
+  local app="$1"
+  local ssl_inuse="$2"
+
+  fn-nginx-path-vhosts-manage-hsts "$app" "$ssl_inuse"
+  plugn trigger nginx-path-pre-reload "$app" "$DOKKU_APP_LISTEN_PORT" "$DOKKU_APP_LISTEN_IP" 2>/dev/null || true
+
+  dokku_log_verbose "Reloading nginx-path"
+  if ! validate_nginx; then
+    dokku_log_fail "Nginx configuration validation failed"
+    return 1
+  fi
+
+  restart_nginx >/dev/null
+}
+
+get_nginx_configuration() {
+  local app="$1"
+
+  local nginx_location nginx_version spdy_supported tls13_supported
+  local http2_supported http2_push_supported grpc_supported
+  local nginx_log_root nginx_access_log_format nginx_access_log_path nginx_error_log_path
+  local client_body_timeout client_header_timeout client_max_body_size
+  local keepalive_timeout lingering_timeout proxy_connect_timeout
+  local proxy_read_timeout proxy_send_timeout send_timeout
+  local proxy_buffer_size proxy_buffering proxy_buffers proxy_busy_buffers_size
+  local nginx_bind_address_ip4 nginx_bind_address_ip6 nginx_underscore_in_headers
+  local proxy_x_forwarded_for proxy_x_forwarded_port proxy_x_forwarded_proto proxy_x_forwarded_ssl
+  local strip_path
+
+  nginx_location=$(get_nginx_location)
+  if [[ -z "$nginx_location" ]]; then
+    dokku_log_fail "Could not find nginx binary"
+    exit 1
+  fi
+
+  nginx_version="$("$nginx_location" -v 2>&1 | cut -d'/' -f 2)"
+  spdy_supported="false"
+  tls13_supported="$(is_tls13_available "$nginx_version")"
+  http2_supported="$(is_http2_enabled "$nginx_version")"
+  http2_push_supported="$(is_http2_push_enabled "$nginx_version")"
+  grpc_supported="$(is_grpc_enabled "$nginx_version")"
+
+  nginx_log_root="$(fn-nginx-path-log-root)"
+  nginx_access_log_format="$(fn-nginx-path-computed-access-log-format "$app")"
+  nginx_access_log_path="$(fn-nginx-path-computed-access-log-path "$app")"
+  nginx_error_log_path="$(fn-nginx-path-computed-error-log-path "$app")"
+  client_body_timeout="$(fn-nginx-path-computed-client-body-timeout "$app")"
+  client_header_timeout="$(fn-nginx-path-computed-client-header-timeout "$app")"
+  client_max_body_size="$(fn-nginx-path-computed-client-max-body-size "$app")"
+  keepalive_timeout="$(fn-nginx-path-computed-keepalive-timeout "$app")"
+  lingering_timeout="$(fn-nginx-path-computed-lingering-timeout "$app")"
+  proxy_connect_timeout="$(fn-nginx-path-computed-proxy-connect-timeout "$app")"
+  proxy_read_timeout="$(fn-nginx-path-computed-proxy-read-timeout "$app")"
+  proxy_send_timeout="$(fn-nginx-path-computed-proxy-send-timeout "$app")"
+  send_timeout="$(fn-nginx-path-computed-send-timeout "$app")"
+  proxy_buffer_size="$(fn-nginx-path-computed-proxy-buffer-size "$app")"
+  proxy_buffering="$(fn-nginx-path-computed-proxy-buffering "$app")"
+  proxy_buffers="$(fn-nginx-path-computed-proxy-buffers "$app")"
+  proxy_busy_buffers_size="$(fn-nginx-path-computed-proxy-busy-buffers-size "$app")"
+
+  nginx_bind_address_ip4="$(fn-nginx-path-computed-bind-address-ipv4 "$app")"
+  nginx_bind_address_ip6="$(fn-nginx-path-computed-bind-address-ipv6 "$app")"
+  nginx_underscore_in_headers="$(fn-nginx-path-computed-underscore-in-headers "$app")"
+  proxy_x_forwarded_for="$(fn-nginx-path-computed-x-forwarded-for-value "$app")"
+  proxy_x_forwarded_port="$(fn-nginx-path-computed-x-forwarded-port-value "$app")"
+  proxy_x_forwarded_proto="$(fn-nginx-path-computed-x-forwarded-proto-value "$app")"
+  proxy_x_forwarded_ssl="$(fn-nginx-path-computed-x-forwarded-ssl "$app")"
+
+  strip_path="$(fn-nginx-path-computed-strip-path "$app")"
+
+  cat <<EOF
+NGINX_LOCATION="$nginx_location"
+NGINX_VERSION="$nginx_version"
+SPDY_SUPPORTED="$spdy_supported"
+TLS13_SUPPORTED="$tls13_supported"
+HTTP2_SUPPORTED="$http2_supported"
+HTTP2_PUSH_SUPPORTED="$http2_push_supported"
+GRPC_SUPPORTED="$grpc_supported"
+NGINX_LOG_ROOT="$nginx_log_root"
+NGINX_ACCESS_LOG_FORMAT="$nginx_access_log_format"
+NGINX_ACCESS_LOG_PATH="$nginx_access_log_path"
+NGINX_ERROR_LOG_PATH="$nginx_error_log_path"
+CLIENT_BODY_TIMEOUT="$client_body_timeout"
+CLIENT_HEADER_TIMEOUT="$client_header_timeout"
+CLIENT_MAX_BODY_SIZE="$client_max_body_size"
+KEEPALIVE_TIMEOUT="$keepalive_timeout"
+LINGERING_TIMEOUT="$lingering_timeout"
+PROXY_CONNECT_TIMEOUT="$proxy_connect_timeout"
+PROXY_READ_TIMEOUT="$proxy_read_timeout"
+PROXY_SEND_TIMEOUT="$proxy_send_timeout"
+SEND_TIMEOUT="$send_timeout"
+PROXY_BUFFER_SIZE="$proxy_buffer_size"
+PROXY_BUFFERING="$proxy_buffering"
+PROXY_BUFFERS="$proxy_buffers"
+PROXY_BUSY_BUFFERS_SIZE="$proxy_busy_buffers_size"
+NGINX_BIND_ADDRESS_IP4="$nginx_bind_address_ip4"
+NGINX_BIND_ADDRESS_IP6="$nginx_bind_address_ip6"
+NGINX_UNDERSCORE_IN_HEADERS="$nginx_underscore_in_headers"
+PROXY_X_FORWARDED_FOR="$proxy_x_forwarded_for"
+PROXY_X_FORWARDED_PORT="$proxy_x_forwarded_port"
+PROXY_X_FORWARDED_PROTO="$proxy_x_forwarded_proto"
+PROXY_X_FORWARDED_SSL="$proxy_x_forwarded_ssl"
+STRIP_PATH="$strip_path"
+EOF
+}
+
+generate_main_nginx_config() {
+  local app="$1"
+  local ssl_config="$2"
+  local port_config="$3"
+  local nginx_config="$4"
+  local work_dir="$5"
+
+  eval "$ssl_config"
+  eval "$port_config"
+  eval "$nginx_config"
+
+  local app_path default_app vhost_path nginx_template_name nginx_template
+  local scheme nginx_template_source app_ssl_path is_app_vhost_enabled
+  local nginx_conf custom_nginx_template sigil_params proc_type listeners upp_proc_type
+
+  app_path="$(fn-nginx-path-computed-app-path "$app")"
+  default_app="$app"
+  vhost_path="$DOKKU_ROOT/$app/VHOST"
+  nginx_template_name="nginx.conf.sigil"
+  nginx_template="$_DIR/templates/$nginx_template_name"
+  scheme=http
+  nginx_template_source="built-in"
+  app_ssl_path="$DOKKU_ROOT/$app/tls"
+
+  is_app_vhost_enabled=true
+  plugn trigger domains-vhost-enabled "$app" 2>/dev/null || is_app_vhost_enabled=false
+
+  if [[ "$IS_SSL_ENABLED" == "true" ]]; then
+    scheme=https
+  fi
+
+  dokku_log_info2 "Using listeners: $DOKKU_APP_LISTENERS"
+  dokku_log_info2 "Using upstream ports: $PROXY_UPSTREAM_PORTS"
+  dokku_log_info2 "Using port map: $PROXY_PORT_MAP"
+
+  if ! (is_deployed "$app" 2>/dev/null); then
+    dokku_log_warn_quiet "App $app may not be fully deployed, but generating nginx config anyway"
+  fi
+
+  nginx_conf=$(mktemp --tmpdir="$work_dir" "nginx.conf.XXXXXX")
+  custom_nginx_template="$work_dir/$nginx_template_name"
+
+  if get_custom_nginx_template "$app" "$custom_nginx_template"; then
+    dokku_log_info1 'Overriding default nginx.conf with detected nginx.conf.sigil'
+    nginx_template="$custom_nginx_template"
+    nginx_template_source="app-supplied"
+  else
+    dokku_log_info2 'No custom nginx.conf.sigil found, using built-in template.'
+    nginx_template="$_DIR/templates/$nginx_template_name"
+    nginx_template_source="built-in"
+  fi
+
+  if [[ -z "$nginx_template" ]] || [[ ! -f "$nginx_template" ]]; then
+    dokku_log_fail "FATAL: Nginx template could not be found."
+    return 1
+  fi
+
+  eval "$(config_export app "$app" 2>/dev/null || true)"
+  sigil_params=(-f "$nginx_template" APP="$app" DOKKU_ROOT="$DOKKU_ROOT"
+    NOSSL_SERVER_NAME="$NOSSL_SERVER_NAME"
+    DOKKU_APP_LISTENERS="$DOKKU_APP_LISTENERS"
+    DOKKU_LIB_ROOT="$DOKKU_LIB_ROOT"
+    PASSED_LISTEN_IP_PORT="${PASSED_LISTEN_IP_PORT:-}"
+    SPDY_SUPPORTED="$SPDY_SUPPORTED"
+    TLS13_SUPPORTED="$TLS13_SUPPORTED"
+    HTTP2_SUPPORTED="$HTTP2_SUPPORTED"
+    NGINX_LOG_ROOT="$NGINX_LOG_ROOT"
+    NGINX_ACCESS_LOG_FORMAT="$NGINX_ACCESS_LOG_FORMAT"
+    NGINX_ACCESS_LOG_PATH="$NGINX_ACCESS_LOG_PATH"
+    NGINX_ERROR_LOG_PATH="$NGINX_ERROR_LOG_PATH"
+    NGINX_BIND_ADDRESS_IP4="$NGINX_BIND_ADDRESS_IP4"
+    NGINX_BIND_ADDRESS_IP6="$NGINX_BIND_ADDRESS_IP6"
+    HTTP2_PUSH_SUPPORTED="$HTTP2_PUSH_SUPPORTED"
+    GRPC_SUPPORTED="$GRPC_SUPPORTED"
+    DOKKU_APP_LISTEN_PORT="$DOKKU_APP_LISTEN_PORT" DOKKU_APP_LISTEN_IP="$DOKKU_APP_LISTEN_IP"
+    APP_SSL_PATH="$app_ssl_path" SSL_INUSE="$SSL_INUSE" SSL_SERVER_NAME="$SSL_SERVER_NAME"
+    CLIENT_BODY_TIMEOUT="$CLIENT_BODY_TIMEOUT"
+    CLIENT_HEADER_TIMEOUT="$CLIENT_HEADER_TIMEOUT"
+    CLIENT_MAX_BODY_SIZE="$CLIENT_MAX_BODY_SIZE"
+    KEEPALIVE_TIMEOUT="$KEEPALIVE_TIMEOUT"
+    LINGERING_TIMEOUT="$LINGERING_TIMEOUT"
+    PROXY_CONNECT_TIMEOUT="$PROXY_CONNECT_TIMEOUT"
+    PROXY_READ_TIMEOUT="$PROXY_READ_TIMEOUT"
+    PROXY_SEND_TIMEOUT="$PROXY_SEND_TIMEOUT"
+    SEND_TIMEOUT="$SEND_TIMEOUT"
+    PROXY_BUFFER_SIZE="$PROXY_BUFFER_SIZE"
+    PROXY_BUFFERING="$PROXY_BUFFERING"
+    PROXY_BUFFERS="$PROXY_BUFFERS"
+    PROXY_BUSY_BUFFERS_SIZE="$PROXY_BUSY_BUFFERS_SIZE"
+    NGINX_UNDERSCORE_IN_HEADERS="$NGINX_UNDERSCORE_IN_HEADERS"
+    NGINX_PORT="$PROXY_PORT" NGINX_SSL_PORT="$PROXY_SSL_PORT"
+    PROXY_PORT="$PROXY_PORT" PROXY_SSL_PORT="$PROXY_SSL_PORT"
+    PROXY_PORT_MAP="$PROXY_PORT_MAP" PROXY_UPSTREAM_PORTS="$PROXY_UPSTREAM_PORTS"
+    PROXY_X_FORWARDED_FOR="$PROXY_X_FORWARDED_FOR"
+    PROXY_X_FORWARDED_PORT="$PROXY_X_FORWARDED_PORT"
+    PROXY_X_FORWARDED_PROTO="$PROXY_X_FORWARDED_PROTO"
+    PROXY_X_FORWARDED_SSL="$PROXY_X_FORWARDED_SSL"
+    APP_PATH="$app_path"
+    ROOT_DOMAIN="$ROOT_DOMAIN"
+    DEFAULT_APP="$default_app"
+    STRIP_PATH="$STRIP_PATH")
+
+  while read -r line || [[ -n "$line" ]]; do
+    if [[ -n "$line" ]]; then
+      proc_type=${line%%=*}
+      listeners="$(plugn trigger network-get-listeners "$app" "$proc_type" 2>/dev/null | xargs || true)"
+      upp_proc_type="${proc_type^^}"
+      upp_proc_type="${upp_proc_type//-/_}"
+      sigil_params+=("DOKKU_APP_${upp_proc_type}_LISTENERS=$listeners")
+    fi
+  done < <(plugn trigger ps-current-scale "$app" 2>/dev/null || echo "web=1")
+
+  xargs -i echo "-----> Configuring {}...(using $nginx_template_source template)" <<<"$(echo "${SSL_VHOSTS:-}" "${NONSSL_VHOSTS}" | tr ' ' '\n' | sort -u)"
+
+  dokku_log_info2 "Generating nginx configuration..."
+  if ! sigil "${sigil_params[@]}" | cat -s >"$nginx_conf"; then
+    dokku_log_fail "Failed to generate nginx configuration using sigil"
+    return 1
+  fi
+
+  dokku_log_info1 "Creating $scheme nginx.conf for $app"
+  mv "$nginx_conf" "$DOKKU_ROOT/$app/nginx.conf"
+}
+
+# MAIN FUNCTION
+nginx_build_config() {
+  declare desc="build nginx config to proxy app containers using sigil"
+  declare APP="$1" DOKKU_APP_LISTEN_PORT="$2" DOKKU_APP_LISTEN_IP="$3"
+
+  validate_proxy_enabled "$APP" || return
+
+  local work_dir
+  work_dir=$(setup_build_environment "$APP")
+  trap "cleanup_build_environment '$work_dir'" RETURN INT TERM EXIT
+
+  local domain_config
+  domain_config=$(setup_domain_management "$APP")
+
+  if ! should_manage_domain "$APP" "$domain_config"; then
+    delegate_to_primary_app "$APP" "$domain_config" "$DOKKU_APP_LISTEN_PORT" "$DOKKU_APP_LISTEN_IP"
+    return
+  fi
+
+  local ssl_config port_config nginx_config
+  ssl_config=$(configure_ssl_settings "$APP")
+  port_config=$(setup_port_mappings "$APP" "$DOKKU_APP_LISTEN_PORT" "$DOKKU_APP_LISTEN_IP")
+  nginx_config=$(get_nginx_configuration "$APP")
+
+  generate_secondary_app_configs "$APP" "$domain_config" "$work_dir"
+  generate_main_nginx_config "$APP" "$ssl_config" "$port_config" "$nginx_config" "$work_dir"
+
+  eval "$ssl_config"
+  finalize_nginx_config "$APP" "${SSL_INUSE:-}"
 }
