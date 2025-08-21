@@ -67,48 +67,44 @@ restart_nginx() {
 
 nginx_logs() {
   declare desc="display app nginx logs"
-  declare NGINX_LOGS_TYPE="${1#nginx-path:}" APP="$2"
-  local proxy_type
+  declare CMD="$1" APP="$2"
+  local log_type
 
   if [[ "$CMD" == *"access-logs"* ]]; then
     log_type="access"
   elif [[ "$CMD" == *"error-logs"* ]]; then
     log_type="error"
   else
-    dokku_log_fail "Unknown log type"
+    dokku_log_fail "Unknown log type from command: $CMD"
     return 1
   fi
 
   local NGINX_LOGS_PATH
   NGINX_LOGS_PATH=$(fn-nginx-path-computed-${log_type}-log-path "$APP")
 
-  if [[ "$NGINX_LOGS_PATH" == "off" ]] || [[ "$NGINX_LOGS_PATH" == "/dev/null" ]]; then
-    dokku_log_fail "$NGINX_LOGS_TYPE logs are disabled for this app"
+  if [[ "$NGINX_LOGS_PATH" == "off" ]] || [[ "$NGINX_LOGS_PATH" == "/dev/null" ]] || [[ -z "$NGINX_LOGS_PATH" ]]; then
+    dokku_log_fail "${log_type} logs are disabled or path not found for this app"
+    return 1
   fi
-
-  proxy_type="$(plugn trigger proxy-type "$APP")"
 
   local tail=false
-  local num=0
+  local num=20
   if [[ $3 == "-t" ]]; then
     tail=true
-  else
-    num=20
   fi
 
-  local DOKKU_SCHEDULER=$(get_app_scheduler "$APP")
+  local DOKKU_SCHEDULER
+  DOKKU_SCHEDULER=$(get_app_scheduler "$APP")
   if [[ "$DOKKU_SCHEDULER" != "docker-local" ]] && [[ "$DOKKU_SCHEDULER" != "null" ]]; then
-    plugn trigger scheduler-proxy-logs "$DOKKU_SCHEDULER" "$APP" "$proxy_type" "$NGINX_LOGS_TYPE" "$tail" "$num"
+    plugn trigger scheduler-proxy-logs "$DOKKU_SCHEDULER" "$APP" "$PROXY_NAME" "$log_type" "$tail" "$num"
     return $?
   fi
 
   if [[ "$tail" == "true" ]]; then
-    local NGINX_LOGS_ARGS="-F"
+    tail -F "$NGINX_LOGS_PATH"
   else
-    local NGINX_LOGS_ARGS="-n $num"
+    tail -n "$num" "$NGINX_LOGS_PATH"
   fi
-
-  tail "$NGINX_LOGS_ARGS" "$NGINX_LOGS_PATH"
 }
 
 validate_ssl_domains() {
