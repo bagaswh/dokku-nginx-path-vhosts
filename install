@@ -70,6 +70,11 @@ trigger-nginx-path-vhosts-install() {
 
   cd "$_DIR"
 
+  dokku_log_info2 "Setting up custom error pages directory..."
+  mkdir -p "/var/lib/dokku/data/${PROXY_NAME}/dokku-errors"
+
+  cp -f "${_DIR}/templates/"*.html "/var/lib/dokku/data/${PROXY_NAME}/dokku-errors/"
+
   make -j "$(nproc)" build-in-docker
 }
 
