@@ -51,7 +51,7 @@ fn-nginx-path-vhosts-copy-from-directory() {
 }
 
 trigger-nginx-path-vhosts-post-extract() {
-  declare desc="nginx-path-vhosts post-extract plugin trigger"
+  declare desc="${PROXY_NAME} post-extract plugin trigger"
   declare trigger="post-extract"
   declare APP="$1" SOURCECODE_WORK_DIR="$2"
   local app_source_image

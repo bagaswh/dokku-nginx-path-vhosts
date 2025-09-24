@@ -25,7 +25,7 @@ fn-in-array-with-wildcard() {
 
 cmd-nginx-path-vhosts-set() {
   declare desc="set or clear an nginx-path property for an app"
-  declare cmd="nginx-path-vhosts:set"
+  declare cmd="${PROXY_NAME}:set"
   [[ "$1" == "$cmd" ]] && shift 1
   declare APP="$1" KEY="$2" VALUE="$3"
 

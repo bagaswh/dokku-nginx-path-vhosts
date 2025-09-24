@@ -6,7 +6,7 @@ _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/functions"
 
 trigger-nginx-path-vhosts-post-delete() {
-  declare desc="nginx-path-vhosts post-delete trigger"
+  declare desc="${PROXY_NAME} post-delete trigger"
   declare trigger="post-delete"
   declare APP="$1"
 

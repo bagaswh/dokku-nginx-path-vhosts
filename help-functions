@@ -5,7 +5,7 @@ set -eo pipefail
 cmd-nginx-path-vhosts-vhosts-help() {
   declare desc="help command"
   declare CMD="$1"
-  local plugin_name="nginx-path-vhosts"
+  local plugin_name="${PROXY_NAME}"
   local plugin_description="Manage the nginx proxy"
 
   if [[ "$CMD" == "${plugin_name}:help" ]]; then

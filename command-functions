@@ -9,7 +9,7 @@ source "$_DIR/internal-functions"
 
 cmd-nginx-path-vhosts-report() {
   declare desc="displays a nginx report for one or more apps"
-  declare cmd="nginx-path-vhosts:report"
+  declare cmd="${PROXY_NAME}:report"
   [[ "$1" == "$cmd" ]] && shift 1
   declare APP="$1" INFO_FLAG="$2"
 
@@ -156,7 +156,7 @@ cmd-nginx-path-vhosts-report-single() {
 
 cmd-nginx-path-vhosts-show-config() {
   declare desc="display app nginx config"
-  declare cmd="nginx-path-vhosts:show-config"
+  declare cmd="${PROXY_NAME}:show-config"
   [[ "$1" == "$cmd" ]] && shift 1
   declare APP="$1"
   local proxy_type
@@ -183,7 +183,7 @@ cmd-nginx-path-vhosts-show-config() {
 
 # cmd-nginx-path-vhosts-start() {
 #   declare desc="starts the nginx server"
-#   declare cmd="nginx-path-vhosts:start"
+#   declare cmd="${PROXY_NAME}:start"
 #   [[ "$1" == "$cmd" ]] && shift 1
 
 #   fn-plugin-property-write "nginx-path" "--global" "proxy-status" "started"
@@ -193,7 +193,7 @@ cmd-nginx-path-vhosts-show-config() {
 
 # cmd-nginx-path-vhosts-stop() {
 #   declare desc="stops the nginx server"
-#   declare cmd="nginx-path-vhosts:stop"
+#   declare cmd="${PROXY_NAME}:stop"
 #   [[ "$1" == "$cmd" ]] && shift 1
 
 #   fn-plugin-property-write "nginx-path" "--global" "proxy-status" "stopped"
@@ -203,7 +203,7 @@ cmd-nginx-path-vhosts-show-config() {
 
 cmd-nginx-path-vhosts-validate-config() {
   declare desc="validates and optionally cleans up invalid nginx configurations"
-  declare cmd="nginx-path-vhosts:validate-config"
+  declare cmd="${PROXY_NAME}:validate-config"
   [[ "$1" == "$cmd" ]] && shift 1
   declare APP="$1" FLAG="$2"
 

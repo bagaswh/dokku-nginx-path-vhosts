@@ -9,7 +9,7 @@ source "$PLUGIN_CORE_AVAILABLE_PATH/common/property-functions"
 source "$PLUGIN_AVAILABLE_PATH/config/functions"
 
 trigger-nginx-path-vhosts-install() {
-  declare desc="nginx-path-vhosts install trigger"
+  declare desc="${PROXY_NAME} install trigger"
   declare trigger="install"
 
   fn-plugin-property-setup "$PROXY_NAME"

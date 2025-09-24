@@ -6,7 +6,7 @@ _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/functions"
 
 trigger-nginx-path-vhosts-scheduler-post-deploy-process() {
-  declare desc="nginx-path-vhosts scheduler-post-deploy-process plugin trigger"
+  declare desc="${PROXY_NAME} scheduler-post-deploy-process plugin trigger"
   declare trigger="scheduler-post-deploy-process"
   declare APP="$1" PROCESS_TYPE="$2"
 
