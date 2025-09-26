@@ -46,5 +46,5 @@ trigger-nginx-path-vhosts-proxy-build-config() {
   fi
 }
 
-trigger-nginx-path-vhosts-proxy-build-config "$@"
-# echo "proxy-build-config" "$@"
+# trigger-nginx-path-vhosts-proxy-build-config "$@"
+echo "proxy-build-config" "$@"
