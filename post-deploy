@@ -20,4 +20,5 @@ trigger-nginx-path-vhosts-core-post-deploy() {
   plugn trigger proxy-build-config "$APP"
 }
 
-trigger-nginx-path-vhosts-core-post-deploy "$@"
+# trigger-nginx-path-vhosts-core-post-deploy "$@"
+echo "POST-DEPLOY" "$@"
