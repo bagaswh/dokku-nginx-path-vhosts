@@ -76,6 +76,8 @@ trigger-nginx-path-vhosts-install() {
   cp -f "${_DIR}/templates/"*.html "/var/lib/dokku/data/${PROXY_NAME}/dokku-errors/"
 
   make -j "$(nproc)" build-in-docker
+
+  chown -R dokku:dokku /var/lib/dokku/data/${PROXY_NAME}/ 
 }
 
 trigger-nginx-path-vhosts-install "$@"
