@@ -13,6 +13,8 @@ trigger-nginx-path-vhosts-core-post-deploy() {
   declare APP="$1"
   local HAS_NETWORK_CONFIG
 
+  echo "Proxy type:" "$(plugn trigger proxy-type "$APP")"
+
   if [[ "$(plugn trigger proxy-type "$APP")" != "$PROXY_NAME" ]]; then
     return
   fi
@@ -20,5 +22,4 @@ trigger-nginx-path-vhosts-core-post-deploy() {
   plugn trigger proxy-build-config "$APP"
 }
 
-# trigger-nginx-path-vhosts-core-post-deploy "$@"
-echo "POST-DEPLOY" "$@"
+trigger-nginx-path-vhosts-core-post-deploy "$@"
