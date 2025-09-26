@@ -13,6 +13,11 @@ get_nginx_location() {
   fn-nginx-path-vhosts-nginx-path-location
 }
 
+get_app_proxy_type() {
+  local APP="$1"
+  echo "$(plugn trigger proxy-type "$APP")-vhosts"
+}
+
 validate_nginx() {
   declare desc="validate entire nginx config"
   declare APP="${1:-}" FLAG="${2:-}"
