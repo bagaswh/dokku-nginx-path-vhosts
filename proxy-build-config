@@ -12,7 +12,8 @@ trigger-nginx-path-vhosts-proxy-build-config() {
   declare APP="$1"
   local HAS_NETWORK_CONFIG
 
-  if [[ "$(plugn trigger proxy-type "$APP")" != "$PROXY_NAME" ]]; then
+  if [[ "$(get_app_proxy_type "$APP")" != "$PROXY_NAME" ]]; then
+    echo "Quitting"
     return
   fi
 
@@ -46,5 +47,4 @@ trigger-nginx-path-vhosts-proxy-build-config() {
   fi
 }
 
-# trigger-nginx-path-vhosts-proxy-build-config "$@"
-echo "proxy-build-config" "$@"
+trigger-nginx-path-vhosts-proxy-build-config "$@"
