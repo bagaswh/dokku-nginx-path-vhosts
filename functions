@@ -583,7 +583,9 @@ nginx_build_config() {
   fi
 
   dokku_log_info1 "Creating $SCHEME nginx.conf for $APP"
+  set -x
   mv "$NGINX_CONF" "$DOKKU_ROOT/$APP/nginx.conf"
+  set +x
 
   fn-nginx-path-vhosts-manage-hsts "$APP" "$SSL_INUSE"
   plugn trigger nginx-path-pre-reload "$APP" "$DOKKU_APP_LISTEN_PORT" "$DOKKU_APP_LISTEN_IP" 2>/dev/null || true
