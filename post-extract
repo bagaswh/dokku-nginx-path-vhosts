@@ -10,7 +10,8 @@ fn-nginx-path-vhosts-copy-from-image() {
   declare APP="$1" IMAGE_NAME="$2" CONF_SIGIL_PATH="$3" DOMAIN="$4" CONF_SCOPE="$5"
 
   conf_dest_path_base_dir="${DATA_DIRECTORY}/app-$APP/"
-
+  
+  whoami
   mkdir -p "$conf_dest_path_base_dir"
 
   conf_dest_path_filename_prefix="nginx-$CONF_SCOPE.$DOMAIN.conf.sigil"
