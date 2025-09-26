@@ -5,7 +5,7 @@ import (
 )
 
 func getLogRoot() string {
-	logRoot := "/var/log/nginx-path"
+	logRoot := "/var/log/nginx"
 	if isOpenRestyInstalled() {
 		logRoot = "/var/log/openresty"
 	}
