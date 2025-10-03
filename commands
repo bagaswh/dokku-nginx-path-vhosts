@@ -7,35 +7,35 @@ set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
 
 case "$1" in
-  help | nginx-path:help)
+  help | nginx-path-vhosts:help)
     cmd-nginx-path-vhosts-vhosts-help "$@"
     ;;
 
-  nginx-path:access-logs)
+  nginx-path-vhosts:access-logs)
     source "$_DIR/subcommands/access-logs"
     ;;
 
-  nginx-path:error-logs)
+  nginx-path-vhosts:error-logs)
     source "$_DIR/subcommands/error-logs"
     ;;
 
-  nginx-path:report)
+  nginx-path-vhosts:report)
     cmd-nginx-path-vhosts-report "$@"
     ;;
 
-  nginx-path:show-config)
+  nginx-path-vhosts:show-config)
     cmd-nginx-path-vhosts-show-config "$@"
     ;;
 
-  nginx-path:validate-config)
+  nginx-path-vhosts:validate-config)
     cmd-nginx-path-vhosts-validate-config "$@"
     ;;
 
-  nginx-path:set)
+  nginx-path-vhosts:set)
     source "$_DIR/subcommands/set"
     ;;
 
-  nginx-path:get)
+  nginx-path-vhosts:get)
     source "$_DIR/subcommands/get"
     ;;
 
