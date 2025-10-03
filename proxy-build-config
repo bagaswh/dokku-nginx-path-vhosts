@@ -6,45 +6,45 @@ source "$_DIR/config"
 source "$_DIR/functions"
 source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
 
-trigger-nginx-path-vhosts-proxy-build-config() {
-  declare desc="build nginx config to proxy app containers from command line"
-  declare trigger="proxy-build-config"
-  declare APP="$1"
-  local HAS_NETWORK_CONFIG
+# trigger-nginx-path-vhosts-proxy-build-config() {
+#   declare desc="build nginx config to proxy app containers from command line"
+#   declare trigger="proxy-build-config"
+#   declare APP="$1"
+#   local HAS_NETWORK_CONFIG
 
-  if [[ "$(get_app_proxy_type "$APP")" != "$PROXY_NAME" ]]; then
-    echo "Quitting"
-    return
-  fi
+#   if [[ "$(get_app_proxy_type "$APP")" != "$PROXY_NAME" ]]; then
+#     echo "Quitting"
+#     return
+#   fi
 
-  HAS_NETWORK_CONFIG="$(plugn trigger network-config-exists "$APP")"
-  if [[ "$HAS_NETWORK_CONFIG" == "true" ]]; then
-    plugn trigger network-build-config "$APP"
+#   HAS_NETWORK_CONFIG="$(plugn trigger network-config-exists "$APP")"
+#   if [[ "$HAS_NETWORK_CONFIG" == "true" ]]; then
+#     plugn trigger network-build-config "$APP"
 
-    nginx_build_config "$APP"
+#     nginx_build_config "$APP"
 
-    mkdir -p "${DATA_DIRECTORY}/app-$APP/"
+#     mkdir -p "${DATA_DIRECTORY}/app-$APP/"
 
-    # if [[ -f "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil.$DOKKU_PID" ]]; then
-    #   mv "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil.$DOKKU_PID" "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil"
-    # fi
+#     # if [[ -f "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil.$DOKKU_PID" ]]; then
+#     #   mv "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil.$DOKKU_PID" "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP/nginx.conf.sigil"
+#     # fi
 
-    while read -r file; do
-      echo "mv $file ${file%.$DOKKU_PID}"
-    done < <(find "${DATA_DIRECTORY}/app-$APP/" -maxdepth 1 -type f -regex "nginx.*$DOKKU_PID\\b")
+#     while read -r file; do
+#       echo "mv $file ${file%.$DOKKU_PID}"
+#     done < <(find "${DATA_DIRECTORY}/app-$APP/" -maxdepth 1 -type f -regex "nginx.*$DOKKU_PID\\b")
 
-    conf_dest_path_base_dir="${DATA_DIRECTORY}/app-$APP/"
-    while read -r file; do
-      # rm "$file"
-      non_missing="${file%.missing}"
-      # echo "rm ${non_missing}"
-      test -f "$non_missing" && rm "$non_missing"
-    done < <(find "$conf_dest_path_base_dir" -maxdepth 1 -type f -wholename "${conf_dest_path_base_dir}/*.missing")
+#     conf_dest_path_base_dir="${DATA_DIRECTORY}/app-$APP/"
+#     while read -r file; do
+#       # rm "$file"
+#       non_missing="${file%.missing}"
+#       # echo "rm ${non_missing}"
+#       test -f "$non_missing" && rm "$non_missing"
+#     done < <(find "$conf_dest_path_base_dir" -maxdepth 1 -type f -wholename "${conf_dest_path_base_dir}/*.missing")
 
-  else
-    # nginx_clear_config "$APP"
-    :
-  fi
-}
+#   else
+#     # nginx_clear_config "$APP"
+#     :
+#   fi
+# }
 
-trigger-nginx-path-vhosts-proxy-build-config "$@"
+"$_DIR/nginx-config-builder" "$@"
