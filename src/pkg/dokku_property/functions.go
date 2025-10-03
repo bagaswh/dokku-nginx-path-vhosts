@@ -1,4 +1,4 @@
-package main
+package dokkuproperty
 
 import (
 	"os"

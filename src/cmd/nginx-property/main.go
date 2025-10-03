@@ -1,6 +1,7 @@
 package main
 
 import (
+	dokkuproperty "dokku-nginx-path-vhosts/src/pkg/dokku_property"
 	"fmt"
 	"log"
 	"os"
@@ -33,5 +34,5 @@ func main() {
 	}
 
 	property := args.Arg(0)
-	fmt.Print(GetComputedProperty(*appName, property))
+	fmt.Print(dokkuproperty.GetComputedProperty(*appName, property))
 }
