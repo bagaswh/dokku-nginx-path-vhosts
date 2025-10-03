@@ -13,6 +13,8 @@ func main() {
 	var appName string
 	flag.StringVar(&appName, "app", "", "the app name")
 
+	fmt.Println("nginx-config-builder is here baby")
+
 	configFilePath := dokkuproperty.GetComputedProperty(appName, configFilePathPropertyName)
 	fmt.Println(configFilePath)
 
