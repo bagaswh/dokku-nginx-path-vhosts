@@ -6,7 +6,7 @@ source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
 _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/functions"
 
-trigger-nginx-path-vhosts-core-post-deploy() {
+trigger-nginx-botika-core-post-deploy() {
   declare desc="${PROXY_NAME} core-post-deploy plugin trigger"
   declare trigger="nginx_core_post_deploy"
   declare APP="$1"
@@ -19,5 +19,5 @@ trigger-nginx-path-vhosts-core-post-deploy() {
   plugn trigger proxy-build-config "$APP"
 }
 
-# trigger-nginx-path-vhosts-core-post-deploy "$@"
+# trigger-nginx-botika-core-post-deploy "$@"
 echo "post-deploy" "$@"

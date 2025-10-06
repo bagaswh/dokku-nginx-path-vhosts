@@ -1,4 +1,4 @@
-module dokku-nginx-path-vhosts
+module dokku-nginx-botika
 
 go 1.23.0
 

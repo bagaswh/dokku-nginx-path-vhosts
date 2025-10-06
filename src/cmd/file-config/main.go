@@ -1,7 +1,7 @@
 package main
 
 import (
-	"dokku-nginx-path-vhosts/src/pkg/file_config"
+	"dokku-nginx-botika/src/pkg/file_config"
 	"flag"
 	"fmt"
 	"log"

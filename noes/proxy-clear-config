@@ -5,18 +5,18 @@ source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
 _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/internal-functions"
 
-fn-trigger-nginx-path-vhosts-proxy-clear-config-app() {
+fn-trigger-nginx-botika-proxy-clear-config-app() {
   declare desc="clears the proxy config for a single app"
   declare APP="$1"
 
   [[ -z "$APP" ]] && dokku_log_fail "Please specify an app to run the command on"
-  if [[ "$(plugn trigger proxy-type "$APP")" == "nginx-path" ]]; then
+  if [[ "$(plugn trigger proxy-type "$APP")" == "nginx-botika" ]]; then
     plugn trigger network-clear-config "$APP"
     nginx_clear_config "$APP"
   fi
 }
 
-trigger-nginx-path-vhosts-proxy-clear-config() {
+trigger-nginx-botika-proxy-clear-config() {
   declare desc="clear nginx config for proxy app containers from command line"
   declare trigger="proxy-clear-config"
   declare APP="$1"
@@ -24,15 +24,15 @@ trigger-nginx-path-vhosts-proxy-clear-config() {
   if [[ "$APP" == "--all" ]]; then
     exit_code="0"
     for app in $(dokku_apps); do
-      if ! fn-trigger-nginx-path-vhosts-proxy-clear-config-app "$app"; then
+      if ! fn-trigger-nginx-botika-proxy-clear-config-app "$app"; then
         exit_code="$?"
       fi
     done
     return "$exit_code"
   fi
 
-  fn-trigger-nginx-path-vhosts-proxy-clear-config-app "$APP"
+  fn-trigger-nginx-botika-proxy-clear-config-app "$APP"
 }
 
-# trigger-nginx-path-vhosts-proxy-clear-config "$@"
+# trigger-nginx-botika-proxy-clear-config "$@"
 echo "proxy-clear-config" "$@"

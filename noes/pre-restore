@@ -7,18 +7,18 @@ source "$_DIR/command-functions"
 set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
 
-trigger-nginx-path-pre-restore() {
+trigger-nginx-botika-pre-restore() {
   declare desc="pre-restore the nginx proxy"
   declare trigger="install"
 
-  if [[ "$(fn-plugin-property-get "nginx-path" "--global" "proxy-status")" != "started" ]]; then
+  if [[ "$(fn-plugin-property-get "nginx-botika" "--global" "proxy-status")" != "started" ]]; then
     return
   fi
 
-  if ! cmd-nginx-path-vhosts-start; then
+  if ! cmd-nginx-botika-start; then
     dokku_log_warn "Failed to restore nginx proxy, requests may not route as expected"
   fi
 }
 
-# trigger-nginx-path-pre-restore "$@"
+# trigger-nginx-botika-pre-restore "$@"
 echo "pre-restore" "$@"

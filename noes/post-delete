@@ -5,17 +5,17 @@ source "$PLUGIN_CORE_AVAILABLE_PATH/common/property-functions"
 _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/functions"
 
-trigger-nginx-path-vhosts-post-delete() {
+trigger-nginx-botika-post-delete() {
   declare desc="${PROXY_NAME} post-delete trigger"
   declare trigger="post-delete"
   declare APP="$1"
 
-  fn-plugin-property-destroy "nginx-path" "$APP"
-  if fn-nginx-path-vhosts-nginx-path-is-running; then
+  fn-plugin-property-destroy "nginx-botika" "$APP"
+  if fn-nginx-botika-nginx-botika-is-running; then
     restart_nginx "$@" >/dev/null
   fi
   rm -rf "${DOKKU_LIB_ROOT}/data/$PROXY_NAME/app-$APP"
 }
 
-# trigger-nginx-path-vhosts-post-delete "$@"
+# trigger-nginx-botika-post-delete "$@"
 echo "post-delete" "$@"

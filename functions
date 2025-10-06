@@ -10,7 +10,7 @@ source "$_DIR/internal-functions"
 
 get_nginx_location() {
   declare desc="check that nginx is at the expected location and return it"
-  fn-nginx-path-vhosts-nginx-path-location
+  fn-nginx-botika-nginx-botika-location
 }
 
 get_app_proxy_type() {
@@ -66,7 +66,7 @@ restart_nginx() {
   local PROXY_ENABLED="$(plugn trigger proxy-is-enabled "$APP")"
   local PROXY_TYPE="$(plugn trigger proxy-type "$APP")"
   if [[ "$PROXY_ENABLED" == "true" ]] && [[ "$PROXY_TYPE" == "$PROXY_NAME" ]]; then
-    fn-nginx-path-vhosts-nginx-path-init-cmd "reload"
+    fn-nginx-botika-nginx-botika-init-cmd "reload"
   fi
 }
 
@@ -85,7 +85,7 @@ nginx_logs() {
   fi
 
   local NGINX_LOGS_PATH
-  NGINX_LOGS_PATH=$(fn-nginx-path-computed-${log_type}-log-path "$APP")
+  NGINX_LOGS_PATH=$(fn-nginx-botika-computed-${log_type}-log-path "$APP")
 
   if [[ "$NGINX_LOGS_PATH" == "off" ]] || [[ "$NGINX_LOGS_PATH" == "/dev/null" ]] || [[ -z "$NGINX_LOGS_PATH" ]]; then
     dokku_log_fail "${log_type} logs are disabled or path not found for this app"
@@ -139,7 +139,7 @@ get_custom_nginx_template() {
   local APP="$1"
   local DESTINATION_FILE="$2"
   local DISABLE_CUSTOM_CONFIG
-  DISABLE_CUSTOM_CONFIG="$(fn-nginx-path-computed-disable-custom-config "$APP")"
+  DISABLE_CUSTOM_CONFIG="$(fn-nginx-botika-computed-disable-custom-config "$APP")"
 
   if [[ "$DISABLE_CUSTOM_CONFIG" == "true" ]]; then
     return 1
@@ -270,7 +270,7 @@ nginx_build_config() {
     return
   fi
 
-  ROOT_DOMAIN="$(fn-nginx-path-computed-root-domain "$APP")"
+  ROOT_DOMAIN="$(fn-nginx-botika-computed-root-domain "$APP")"
 
   if [[ -z "$ROOT_DOMAIN" ]]; then
     ROOT_DOMAIN="$APP"
@@ -279,7 +279,7 @@ nginx_build_config() {
 
   ALL_APPS_FOR_DOMAIN=""
   for app_check in $(dokku_apps); do
-    local app_check_root_domain="$(fn-nginx-path-computed-root-domain "$app_check")"
+    local app_check_root_domain="$(fn-nginx-botika-computed-root-domain "$app_check")"
     # Fallback
     if [[ -z "$app_check_root_domain" ]]; then
       app_check_root_domain="$app_check"
@@ -294,7 +294,7 @@ nginx_build_config() {
   PRIMARY_APP_FOR_DOMAIN=""
 
   for app_check in $ALL_APPS_FOR_DOMAIN; do
-    local explicit_default="$(fn-nginx-path-computed-default-app "$app_check")"
+    local explicit_default="$(fn-nginx-botika-computed-default-app "$app_check")"
     if [[ -n "$explicit_default" ]] && [[ "$explicit_default" == "$app_check" ]]; then
       PRIMARY_APP_FOR_DOMAIN="$app_check"
       dokku_log_info2 "Found explicit default app: $PRIMARY_APP_FOR_DOMAIN"
@@ -325,7 +325,7 @@ nginx_build_config() {
   for other_app in $ALL_APPS_FOR_DOMAIN; do
     if [[ "$other_app" != "$APP" ]]; then
       dokku_log_info2 "Merging config for $other_app..."
-      local other_app_path="$(fn-nginx-path-computed-app-path "$other_app")"
+      local other_app_path="$(fn-nginx-botika-computed-app-path "$other_app")"
       local other_upstream_ports=""
 
       while read -r PORT_MAP; do
@@ -353,7 +353,7 @@ nginx_build_config() {
     fi
   done
 
-  APP_PATH="$(fn-nginx-path-computed-app-path "$APP")"
+  APP_PATH="$(fn-nginx-botika-computed-app-path "$APP")"
   DEFAULT_APP="$PRIMARY_APP_FOR_DOMAIN"
   VHOST_PATH="$DOKKU_ROOT/$APP/VHOST"
   NGINX_TEMPLATE_NAME="nginx.conf.sigil"
@@ -465,23 +465,23 @@ nginx_build_config() {
   HTTP2_PUSH_SUPPORTED="$(is_http2_push_enabled "$NGINX_VERSION")"
   GRPC_SUPPORTED="$(is_grpc_enabled "$NGINX_VERSION")"
 
-  NGINX_LOG_ROOT="$(fn-nginx-path-log-root)"
-  NGINX_ACCESS_LOG_FORMAT="$(fn-nginx-path-computed-access-log-format "$APP")"
-  NGINX_ACCESS_LOG_PATH="$(fn-nginx-path-computed-access-log-path "$APP")"
-  NGINX_ERROR_LOG_PATH="$(fn-nginx-path-computed-error-log-path "$APP")"
-  CLIENT_BODY_TIMEOUT="$(fn-nginx-path-computed-client-body-timeout "$APP")"
-  CLIENT_HEADER_TIMEOUT="$(fn-nginx-path-computed-client-header-timeout "$APP")"
-  CLIENT_MAX_BODY_SIZE="$(fn-nginx-path-computed-client-max-body-size "$APP")"
-  KEEPALIVE_TIMEOUT="$(fn-nginx-path-computed-keepalive-timeout "$APP")"
-  LINGERING_TIMEOUT="$(fn-nginx-path-computed-lingering-timeout "$APP")"
-  PROXY_CONNECT_TIMEOUT="$(fn-nginx-path-computed-proxy-connect-timeout "$APP")"
-  PROXY_READ_TIMEOUT="$(fn-nginx-path-computed-proxy-read-timeout "$APP")"
-  PROXY_SEND_TIMEOUT="$(fn-nginx-path-computed-proxy-send-timeout "$APP")"
-  SEND_TIMEOUT="$(fn-nginx-path-computed-send-timeout "$APP")"
-  PROXY_BUFFER_SIZE="$(fn-nginx-path-computed-proxy-buffer-size "$APP")"
-  PROXY_BUFFERING="$(fn-nginx-path-computed-proxy-buffering "$APP")"
-  PROXY_BUFFERS="$(fn-nginx-path-computed-proxy-buffers "$APP")"
-  PROXY_BUSY_BUFFERS_SIZE="$(fn-nginx-path-computed-proxy-busy-buffers-size "$APP")"
+  NGINX_LOG_ROOT="$(fn-nginx-botika-log-root)"
+  NGINX_ACCESS_LOG_FORMAT="$(fn-nginx-botika-computed-access-log-format "$APP")"
+  NGINX_ACCESS_LOG_PATH="$(fn-nginx-botika-computed-access-log-path "$APP")"
+  NGINX_ERROR_LOG_PATH="$(fn-nginx-botika-computed-error-log-path "$APP")"
+  CLIENT_BODY_TIMEOUT="$(fn-nginx-botika-computed-client-body-timeout "$APP")"
+  CLIENT_HEADER_TIMEOUT="$(fn-nginx-botika-computed-client-header-timeout "$APP")"
+  CLIENT_MAX_BODY_SIZE="$(fn-nginx-botika-computed-client-max-body-size "$APP")"
+  KEEPALIVE_TIMEOUT="$(fn-nginx-botika-computed-keepalive-timeout "$APP")"
+  LINGERING_TIMEOUT="$(fn-nginx-botika-computed-lingering-timeout "$APP")"
+  PROXY_CONNECT_TIMEOUT="$(fn-nginx-botika-computed-proxy-connect-timeout "$APP")"
+  PROXY_READ_TIMEOUT="$(fn-nginx-botika-computed-proxy-read-timeout "$APP")"
+  PROXY_SEND_TIMEOUT="$(fn-nginx-botika-computed-proxy-send-timeout "$APP")"
+  SEND_TIMEOUT="$(fn-nginx-botika-computed-send-timeout "$APP")"
+  PROXY_BUFFER_SIZE="$(fn-nginx-botika-computed-proxy-buffer-size "$APP")"
+  PROXY_BUFFERING="$(fn-nginx-botika-computed-proxy-buffering "$APP")"
+  PROXY_BUFFERS="$(fn-nginx-botika-computed-proxy-buffers "$APP")"
+  PROXY_BUSY_BUFFERS_SIZE="$(fn-nginx-botika-computed-proxy-busy-buffers-size "$APP")"
 
   dokku_log_info2 "Using listeners: $DOKKU_APP_LISTENERS"
   dokku_log_info2 "Using upstream ports: $PROXY_UPSTREAM_PORTS"
@@ -509,15 +509,15 @@ nginx_build_config() {
     return 1
   fi
 
-  NGINX_BIND_ADDRESS_IP4="$(fn-nginx-path-computed-bind-address-ipv4 "$APP")"
-  NGINX_BIND_ADDRESS_IP6="$(fn-nginx-path-computed-bind-address-ipv6 "$APP")"
-  NGINX_UNDERSCORE_IN_HEADERS="$(fn-nginx-path-computed-underscore-in-headers "$APP")"
-  PROXY_X_FORWARDED_FOR="$(fn-nginx-path-computed-x-forwarded-for-value "$APP")"
-  PROXY_X_FORWARDED_PORT="$(fn-nginx-path-computed-x-forwarded-port-value "$APP")"
-  PROXY_X_FORWARDED_PROTO="$(fn-nginx-path-computed-x-forwarded-proto-value "$APP")"
-  PROXY_X_FORWARDED_SSL="$(fn-nginx-path-computed-x-forwarded-ssl "$APP")"
+  NGINX_BIND_ADDRESS_IP4="$(fn-nginx-botika-computed-bind-address-ipv4 "$APP")"
+  NGINX_BIND_ADDRESS_IP6="$(fn-nginx-botika-computed-bind-address-ipv6 "$APP")"
+  NGINX_UNDERSCORE_IN_HEADERS="$(fn-nginx-botika-computed-underscore-in-headers "$APP")"
+  PROXY_X_FORWARDED_FOR="$(fn-nginx-botika-computed-x-forwarded-for-value "$APP")"
+  PROXY_X_FORWARDED_PORT="$(fn-nginx-botika-computed-x-forwarded-port-value "$APP")"
+  PROXY_X_FORWARDED_PROTO="$(fn-nginx-botika-computed-x-forwarded-proto-value "$APP")"
+  PROXY_X_FORWARDED_SSL="$(fn-nginx-botika-computed-x-forwarded-ssl "$APP")"
 
-  STRIP_PATH="$(fn-nginx-path-computed-strip-path "$APP")"
+  STRIP_PATH="$(fn-nginx-botika-computed-strip-path "$APP")"
 
   eval "$(config_export app "$APP" 2>/dev/null || true)"
   SIGIL_PARAMS=(-f "$NGINX_TEMPLATE" APP="$APP" DOKKU_ROOT="$DOKKU_ROOT"
@@ -587,10 +587,10 @@ nginx_build_config() {
   mv "$NGINX_CONF" "$DOKKU_ROOT/$APP/nginx.conf"
   set +x
 
-  fn-nginx-path-vhosts-manage-hsts "$APP" "$SSL_INUSE"
-  plugn trigger nginx-path-pre-reload "$APP" "$DOKKU_APP_LISTEN_PORT" "$DOKKU_APP_LISTEN_IP" 2>/dev/null || true
+  fn-nginx-botika-manage-hsts "$APP" "$SSL_INUSE"
+  plugn trigger nginx-botika-pre-reload "$APP" "$DOKKU_APP_LISTEN_PORT" "$DOKKU_APP_LISTEN_IP" 2>/dev/null || true
 
-  dokku_log_verbose "Reloading nginx-path"
+  dokku_log_verbose "Reloading nginx-botika"
   validate_nginx && restart_nginx >/dev/null
 }
 
@@ -600,18 +600,18 @@ generate_location_config_for_app() {
   local upstream_ports="$3"
   local work_dir="$4"
 
-  local strip_path="$(fn-nginx-path-computed-strip-path "$app")"
-  local proxy_connect_timeout="$(fn-nginx-path-computed-proxy-connect-timeout "$app")"
-  local proxy_read_timeout="$(fn-nginx-path-computed-proxy-read-timeout "$app")"
-  local proxy_send_timeout="$(fn-nginx-path-computed-proxy-send-timeout "$app")"
-  local proxy_buffer_size="$(fn-nginx-path-computed-proxy-buffer-size "$app")"
-  local proxy_buffering="$(fn-nginx-path-computed-proxy-buffering "$app")"
-  local proxy_buffers="$(fn-nginx-path-computed-proxy-buffers "$app")"
-  local proxy_busy_buffers_size="$(fn-nginx-path-computed-proxy-busy-buffers-size "$app")"
-  local proxy_x_forwarded_for="$(fn-nginx-path-computed-x-forwarded-for-value "$app")"
-  local proxy_x_forwarded_port="$(fn-nginx-path-computed-x-forwarded-port-value "$app")"
-  local proxy_x_forwarded_proto="$(fn-nginx-path-computed-x-forwarded-proto-value "$app")"
-  local proxy_x_forwarded_ssl="$(fn-nginx-path-computed-x-forwarded-ssl "$app")"
+  local strip_path="$(fn-nginx-botika-computed-strip-path "$app")"
+  local proxy_connect_timeout="$(fn-nginx-botika-computed-proxy-connect-timeout "$app")"
+  local proxy_read_timeout="$(fn-nginx-botika-computed-proxy-read-timeout "$app")"
+  local proxy_send_timeout="$(fn-nginx-botika-computed-proxy-send-timeout "$app")"
+  local proxy_buffer_size="$(fn-nginx-botika-computed-proxy-buffer-size "$app")"
+  local proxy_buffering="$(fn-nginx-botika-computed-proxy-buffering "$app")"
+  local proxy_buffers="$(fn-nginx-botika-computed-proxy-buffers "$app")"
+  local proxy_busy_buffers_size="$(fn-nginx-botika-computed-proxy-busy-buffers-size "$app")"
+  local proxy_x_forwarded_for="$(fn-nginx-botika-computed-x-forwarded-for-value "$app")"
+  local proxy_x_forwarded_port="$(fn-nginx-botika-computed-x-forwarded-port-value "$app")"
+  local proxy_x_forwarded_proto="$(fn-nginx-botika-computed-x-forwarded-proto-value "$app")"
+  local proxy_x_forwarded_ssl="$(fn-nginx-botika-computed-x-forwarded-ssl "$app")"
 
   if [[ -z "$upstream_ports" ]]; then
     upstream_ports="5000"
@@ -668,7 +668,7 @@ EOF
   done
 }
 
-fn-nginx-path-computed-strip-path() {
+fn-nginx-botika-computed-strip-path() {
   declare desc="get the computed strip-path value"
   declare APP="$1"
 

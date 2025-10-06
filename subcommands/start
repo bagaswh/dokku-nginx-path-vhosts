@@ -5,4 +5,4 @@ source "$_DIR/command-functions"
 set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
 
-cmd-nginx-path-vhosts-start "$@"
+cmd-nginx-botika-start "$@"

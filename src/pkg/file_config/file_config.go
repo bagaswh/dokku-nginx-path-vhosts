@@ -1,4 +1,4 @@
-// Retrieves config from yaml config set in nginx-path-vhost-config-file Dokku config key
+// Retrieves config from yaml config set in nginx-botika-vhost-config-file Dokku config key
 
 package file_config
 

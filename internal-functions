@@ -6,46 +6,46 @@ source "$_DIR/config"
 source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
 source "$PLUGIN_CORE_AVAILABLE_PATH/common/property-functions"
 
-fn-nginx-path-disable-custom-config() {
+fn-nginx-botika-disable-custom-config() {
   declare desc="get the configured disable-custom-config value"
   declare APP="$1"
 
   fn-get-property --app "$APP" "disable-custom-config"
 }
 
-fn-nginx-path-computed-disable-custom-config() {
+fn-nginx-botika-computed-disable-custom-config() {
   declare desc="get the computed disable-custom-config value"
   declare APP="$1"
 
   fn-get-property --app "$APP" --computed "disable-custom-config"
 }
 
-fn-nginx-path-global-disable-custom-config() {
+fn-nginx-botika-global-disable-custom-config() {
   declare desc="get the global disable-custom-config value"
   declare APP="$1"
 
   fn-get-property --app "$APP" --global "disable-custom-config"
 }
 
-fn-nginx-path-vhosts-last-visited-at() {
+fn-nginx-botika-last-visited-at() {
   declare APP="$1"
-  local LOG_PATH=$(fn-nginx-path-access-log-path "$APP")
+  local LOG_PATH=$(fn-nginx-botika-access-log-path "$APP")
 
   if [[ "$LOG_PATH" != "off" ]] && [[ "$LOG_PATH" != "/dev/null" ]] && [[ -f "$LOG_PATH" ]]; then
     stat -c %Y "$LOG_PATH"
   fi
 }
 
-fn-nginx-path-log-root() {
+fn-nginx-botika-log-root() {
   declare desc="get the nginx log root"
   local NGINX_LOG_ROOT="/var/log/nginx"
 
-  fn-nginx-path-vhosts-uses-openresty && NGINX_LOG_ROOT="/var/log/openresty"
+  fn-nginx-botika-uses-openresty && NGINX_LOG_ROOT="/var/log/openresty"
   echo "$NGINX_LOG_ROOT"
 }
 
 # [BEGIN Sigils]
-fn-nginx-path-sigil() {
+fn-nginx-botika-sigil() {
   declare desc="get nginx config sigil path for different block types"
   declare TYPE="$1" SCOPE="$2" APP="$3" DOMAIN="${4:-}"
   local orig_property_name="nginx-conf-${TYPE}-sigil-path"
@@ -66,35 +66,35 @@ fn-nginx-path-sigil() {
 }
 
 # Location config
-fn-nginx-path-computed-nginx-conf-location-sigil-path() {
+fn-nginx-botika-computed-nginx-conf-location-sigil-path() {
   local APP="$1"
   local DOMAIN="$2"
-  fn-nginx-path-sigil "location" "computed" "$APP" "$DOMAIN"
+  fn-nginx-botika-sigil "location" "computed" "$APP" "$DOMAIN"
 }
 
 # Upstream config
-fn-nginx-path-computed_nginx-conf-upstream-sigil-path() {
+fn-nginx-botika-computed_nginx-conf-upstream-sigil-path() {
   local APP="$1"
   local DOMAIN="$2"
-  fn-nginx-path-sigil "upstream" "computed" "$APP" "$DOMAIN"
+  fn-nginx-botika-sigil "upstream" "computed" "$APP" "$DOMAIN"
 }
 
 # Server block config
-fn-nginx-path-computed_nginx-conf-server-block-sigil-path() {
+fn-nginx-botika-computed_nginx-conf-server-block-sigil-path() {
   local APP="$1"
   local DOMAIN="$2"
-  fn-nginx-path-sigil "server-block" "computed" "$APP" "$DOMAIN"
+  fn-nginx-botika-sigil "server-block" "computed" "$APP" "$DOMAIN"
 }
 
 # HTTP block config
-fn-nginx-path-computed_nginx-conf-http-block-sigil-path() {
+fn-nginx-botika-computed_nginx-conf-http-block-sigil-path() {
   local APP="$1"
   local DOMAIN="$2"
-  fn-nginx-path-sigil "http-block" "computed" "$APP" "$DOMAIN"
+  fn-nginx-botika-sigil "http-block" "computed" "$APP" "$DOMAIN"
 }
 # [END Sigils]
 
-fn-nginx-path-vhosts-uses-openresty() {
+fn-nginx-botika-uses-openresty() {
   declare desc="returns whether openresty is in use or not"
 
   if [[ -x /usr/bin/openresty ]]; then
@@ -104,7 +104,7 @@ fn-nginx-path-vhosts-uses-openresty() {
   return 1
 }
 
-fn-nginx-path-vhosts-nginx-location() {
+fn-nginx-botika-nginx-location() {
   declare desc="check that nginx is at the expected location and return it"
   local NGINX_LOCATION
 
@@ -113,7 +113,7 @@ fn-nginx-path-vhosts-nginx-location() {
     NGINX_LOCATION="/usr/sbin/nginx"
   fi
 
-  if fn-nginx-path-vhosts-uses-openresty; then
+  if fn-nginx-botika-uses-openresty; then
     NGINX_LOCATION="/usr/bin/openresty"
   fi
 
@@ -127,7 +127,7 @@ fn-nginx-path-vhosts-nginx-location() {
 fn-get-property() {
   declare desc="get a property from the nginx plugin"
 
-  "$_DIR/nginx-property" --log-root "$(fn-nginx-path-log-root)"  "$@"
+  "$_DIR/nginx-property" --log-root "$(fn-nginx-botika-log-root)"  "$@"
 }
 
 nginx_vhosts_validate_single_func() {
@@ -163,13 +163,13 @@ nginx_vhosts_is_valid_nginx_config_func() {
   local TMP_OUTPUT=$(mktemp "/tmp/dokku-${DOKKU_PID}-${FUNCNAME[0]}.XXXXXX")
   trap "rm -rf '$TMP_OUTPUT' >/dev/null" RETURN INT TERM EXIT
 
-  CUSTOM_VALIDATE_TEMPLATE="$(plugn trigger nginx-path-app-template-source "$APP" "validate-config")"
+  CUSTOM_VALIDATE_TEMPLATE="$(plugn trigger nginx-botika-app-template-source "$APP" "validate-config")"
   if [[ -n "$CUSTOM_VALIDATE_TEMPLATE" ]]; then
     VALIDATE_TEMPLATE="$CUSTOM_VALIDATE_TEMPLATE"
   fi
 
   sigil -f "$VALIDATE_TEMPLATE" NGINX_CONF="$DOKKU_ROOT/$APP/nginx.conf" | cat -s >"$TMP_OUTPUT"
-  local NGINX_LOCATION=$(fn-nginx-path-vhosts-nginx-location)
+  local NGINX_LOCATION=$(fn-nginx-botika-nginx-location)
   sudo "$NGINX_LOCATION" -t -c "$TMP_OUTPUT" 2>/dev/null
 }
 
@@ -184,10 +184,10 @@ nginx_clear_config() {
   declare desc="Remove the nginx conf file"
   declare APP="$1"
   rm -f "$DOKKU_ROOT/$APP/nginx.conf"
-  suppress_output fn-nginx-path-vhosts-nginx-path-init-cmd "reload"
+  suppress_output fn-nginx-botika-nginx-botika-init-cmd "reload"
 }
 
-fn-nginx-path-computed-app-path() {
+fn-nginx-botika-computed-app-path() {
   declare desc="get the computed app-path value"
   declare APP="$1"
 
@@ -199,7 +199,7 @@ fn-nginx-path-computed-app-path() {
   fi
 }
 
-fn-nginx-path-computed-root-domain() {
+fn-nginx-botika-computed-root-domain() {
   declare desc="get the computed root domain value"
   declare APP="$1"
 
@@ -211,458 +211,458 @@ fn-nginx-path-computed-root-domain() {
   fi
 }
 
-fn-nginx-path-computed-default-app() {
+fn-nginx-botika-computed-default-app() {
   declare desc="get the computed default app value"
   declare APP="$1"
 
   if [[ -z "$APP" ]]; then
-      dokku_log_fail "App name is required for fn-nginx-path-computed-default-app"
+      dokku_log_fail "App name is required for fn-nginx-botika-computed-default-app"
   fi
 
   fn-get-property --app "$APP" --computed "default-app"
 }
 
-fn-nginx-path-access-log-format() {
+fn-nginx-botika-access-log-format() {
   declare APP="$1"
   fn-get-property --app "$APP" "access-log-format"
 }
 
-fn-nginx-path-computed-access-log-format() {
+fn-nginx-botika-computed-access-log-format() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "access-log-format"
 }
 
-fn-nginx-path-global-access-log-format() {
+fn-nginx-botika-global-access-log-format() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "access-log-format"
 }
 
-fn-nginx-path-access-log-path() {
+fn-nginx-botika-access-log-path() {
   declare APP="$1"
   fn-get-property --app "$APP" "access-log-path"
 }
 
-fn-nginx-path-computed-access-log-path() {
+fn-nginx-botika-computed-access-log-path() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "access-log-path"
 }
 
-fn-nginx-path-global-access-log-path() {
+fn-nginx-botika-global-access-log-path() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "access-log-path"
 }
 
-fn-nginx-path-error-log-path() {
+fn-nginx-botika-error-log-path() {
   declare APP="$1"
   fn-get-property --app "$APP" "error-log-path"
 }
 
-fn-nginx-path-computed-error-log-path() {
+fn-nginx-botika-computed-error-log-path() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "error-log-path"
 }
 
-fn-nginx-path-global-error-log-path() {
+fn-nginx-botika-global-error-log-path() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "error-log-path"
 }
 
-fn-nginx-path-bind-address-ipv4() {
+fn-nginx-botika-bind-address-ipv4() {
   declare APP="$1"
   fn-get-property --app "$APP" "bind-address-ipv4"
 }
 
-fn-nginx-path-computed-bind-address-ipv4() {
+fn-nginx-botika-computed-bind-address-ipv4() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "bind-address-ipv4"
 }
 
-fn-nginx-path-global-bind-address-ipv4() {
+fn-nginx-botika-global-bind-address-ipv4() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "bind-address-ipv4"
 }
 
-fn-nginx-path-bind-address-ipv6() {
+fn-nginx-botika-bind-address-ipv6() {
   declare APP="$1"
   fn-get-property --app "$APP" "bind-address-ipv6"
 }
 
-fn-nginx-path-computed-bind-address-ipv6() {
+fn-nginx-botika-computed-bind-address-ipv6() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "bind-address-ipv6"
 }
 
-fn-nginx-path-global-bind-address-ipv6() {
+fn-nginx-botika-global-bind-address-ipv6() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "bind-address-ipv6"
 }
 
-fn-nginx-path-client-body-timeout() {
+fn-nginx-botika-client-body-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" "client-body-timeout"
 }
 
-fn-nginx-path-computed-client-body-timeout() {
+fn-nginx-botika-computed-client-body-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "client-body-timeout"
 }
 
-fn-nginx-path-global-client-body-timeout() {
+fn-nginx-botika-global-client-body-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "client-body-timeout"
 }
 
-fn-nginx-path-client-header-timeout() {
+fn-nginx-botika-client-header-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" "client-header-timeout"
 }
 
-fn-nginx-path-computed-client-header-timeout() {
+fn-nginx-botika-computed-client-header-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "client-header-timeout"
 }
 
-fn-nginx-path-global-client-header-timeout() {
+fn-nginx-botika-global-client-header-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "client-header-timeout"
 }
 
-fn-nginx-path-client-max-body-size() {
+fn-nginx-botika-client-max-body-size() {
   declare APP="$1"
   fn-get-property --app "$APP" "client-max-body-size"
 }
 
-fn-nginx-path-computed-client-max-body-size() {
+fn-nginx-botika-computed-client-max-body-size() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "client-max-body-size"
 }
 
-fn-nginx-path-global-client-max-body-size() {
+fn-nginx-botika-global-client-max-body-size() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "client-max-body-size"
 }
 
-fn-nginx-path-disable-custom-config() {
+fn-nginx-botika-disable-custom-config() {
   declare APP="$1"
   fn-get-property --app "$APP" "disable-custom-config"
 }
 
-fn-nginx-path-computed-disable-custom-config() {
+fn-nginx-botika-computed-disable-custom-config() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "disable-custom-config"
 }
 
-fn-nginx-path-global-disable-custom-config() {
+fn-nginx-botika-global-disable-custom-config() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "disable-custom-config"
 }
 
-fn-nginx-path-hsts-include-subdomains() {
+fn-nginx-botika-hsts-include-subdomains() {
   declare APP="$1"
   fn-get-property --app "$APP" "hsts-include-subdomains"
 }
 
-fn-nginx-path-computed-hsts-include-subdomains() {
+fn-nginx-botika-computed-hsts-include-subdomains() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "hsts-include-subdomains"
 }
 
-fn-nginx-path-global-hsts-include-subdomains() {
+fn-nginx-botika-global-hsts-include-subdomains() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "hsts-include-subdomains"
 }
 
-fn-nginx-path-hsts-max-age() {
+fn-nginx-botika-hsts-max-age() {
   declare APP="$1"
   fn-get-property --app "$APP" "hsts-max-age"
 }
 
-fn-nginx-path-computed-hsts-max-age() {
+fn-nginx-botika-computed-hsts-max-age() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "hsts-max-age"
 }
 
-fn-nginx-path-global-hsts-max-age() {
+fn-nginx-botika-global-hsts-max-age() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "hsts-max-age"
 }
 
-fn-nginx-path-hsts-preload() {
+fn-nginx-botika-hsts-preload() {
   declare APP="$1"
   fn-get-property --app "$APP" "hsts-preload"
 }
 
-fn-nginx-path-computed-hsts-preload() {
+fn-nginx-botika-computed-hsts-preload() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "hsts-preload"
 }
 
-fn-nginx-path-global-hsts-preload() {
+fn-nginx-botika-global-hsts-preload() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "hsts-preload"
 }
 
-fn-nginx-path-hsts() {
+fn-nginx-botika-hsts() {
   declare APP="$1"
   fn-get-property --app "$APP" "hsts"
 }
 
-fn-nginx-path-computed-hsts() {
+fn-nginx-botika-computed-hsts() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "hsts"
 }
 
-fn-nginx-path-global-hsts() {
+fn-nginx-botika-global-hsts() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "hsts"
 }
 
-fn-nginx-path-keepalive-timeout() {
+fn-nginx-botika-keepalive-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" "keepalive-timeout"
 }
 
-fn-nginx-path-computed-keepalive-timeout() {
+fn-nginx-botika-computed-keepalive-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "keepalive-timeout"
 }
 
-fn-nginx-path-global-keepalive-timeout() {
+fn-nginx-botika-global-keepalive-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "keepalive-timeout"
 }
 
-fn-nginx-path-lingering-timeout() {
+fn-nginx-botika-lingering-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" "lingering-timeout"
 }
 
-fn-nginx-path-computed-lingering-timeout() {
+fn-nginx-botika-computed-lingering-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "lingering-timeout"
 }
 
-fn-nginx-path-global-lingering-timeout() {
+fn-nginx-botika-global-lingering-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "lingering-timeout"
 }
 
-fn-nginx-path-nginx-path-location-conf-sigil-path() {
+fn-nginx-botika-nginx-botika-location-conf-sigil-path() {
   declare APP="$1"
-  fn-get-property --app "$APP" "nginx-path-location-conf-sigil-path"
+  fn-get-property --app "$APP" "nginx-botika-location-conf-sigil-path"
 }
 
-fn-nginx-path-computed-nginx-path-location-conf-sigil-path() {
+fn-nginx-botika-computed-nginx-botika-location-conf-sigil-path() {
   declare APP="$1"
-  fn-get-property --app "$APP" --computed "nginx-path-location-conf-sigil-path"
+  fn-get-property --app "$APP" --computed "nginx-botika-location-conf-sigil-path"
 }
 
-fn-nginx-path-global-nginx-path-location-conf-sigil-path() {
+fn-nginx-botika-global-nginx-botika-location-conf-sigil-path() {
   declare APP="$1"
-  fn-get-property --app "$APP" --global "nginx-path-location-conf-sigil-path"
+  fn-get-property --app "$APP" --global "nginx-botika-location-conf-sigil-path"
 }
 
-fn-nginx-path-proxy-buffer-size() {
+fn-nginx-botika-proxy-buffer-size() {
   declare APP="$1"
   fn-get-property --app "$APP" "proxy-buffer-size"
 }
 
-fn-nginx-path-computed-proxy-buffer-size() {
+fn-nginx-botika-computed-proxy-buffer-size() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "proxy-buffer-size"
 }
 
-fn-nginx-path-global-proxy-buffer-size() {
+fn-nginx-botika-global-proxy-buffer-size() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "proxy-buffer-size"
 }
 
-fn-nginx-path-proxy-buffering() {
+fn-nginx-botika-proxy-buffering() {
   declare APP="$1"
   fn-get-property --app "$APP" "proxy-buffering"
 }
 
-fn-nginx-path-computed-proxy-buffering() {
+fn-nginx-botika-computed-proxy-buffering() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "proxy-buffering"
 }
 
-fn-nginx-path-global-proxy-buffering() {
+fn-nginx-botika-global-proxy-buffering() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "proxy-buffering"
 }
 
-fn-nginx-path-proxy-buffers() {
+fn-nginx-botika-proxy-buffers() {
   declare APP="$1"
   fn-get-property --app "$APP" "proxy-buffers"
 }
 
-fn-nginx-path-computed-proxy-buffers() {
+fn-nginx-botika-computed-proxy-buffers() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "proxy-buffers"
 }
 
-fn-nginx-path-global-proxy-buffers() {
+fn-nginx-botika-global-proxy-buffers() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "proxy-buffers"
 }
 
-fn-nginx-path-proxy-busy-buffers-size() {
+fn-nginx-botika-proxy-busy-buffers-size() {
   declare APP="$1"
   fn-get-property --app "$APP" "proxy-busy-buffers-size"
 }
 
-fn-nginx-path-computed-proxy-busy-buffers-size() {
+fn-nginx-botika-computed-proxy-busy-buffers-size() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "proxy-busy-buffers-size"
 }
 
-fn-nginx-path-global-proxy-busy-buffers-size() {
+fn-nginx-botika-global-proxy-busy-buffers-size() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "proxy-busy-buffers-size"
 }
 
-fn-nginx-path-proxy-connect-timeout() {
+fn-nginx-botika-proxy-connect-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" "proxy-connect-timeout"
 }
 
-fn-nginx-path-computed-proxy-connect-timeout() {
+fn-nginx-botika-computed-proxy-connect-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "proxy-connect-timeout"
 }
 
-fn-nginx-path-global-proxy-connect-timeout() {
+fn-nginx-botika-global-proxy-connect-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "proxy-connect-timeout"
 }
 
-fn-nginx-path-proxy-read-timeout() {
+fn-nginx-botika-proxy-read-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" "proxy-read-timeout"
 }
 
-fn-nginx-path-computed-proxy-read-timeout() {
+fn-nginx-botika-computed-proxy-read-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "proxy-read-timeout"
 }
 
-fn-nginx-path-global-proxy-read-timeout() {
+fn-nginx-botika-global-proxy-read-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "proxy-read-timeout"
 }
 
-fn-nginx-path-proxy-send-timeout() {
+fn-nginx-botika-proxy-send-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" "proxy-send-timeout"
 }
 
-fn-nginx-path-computed-proxy-send-timeout() {
+fn-nginx-botika-computed-proxy-send-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "proxy-send-timeout"
 }
 
-fn-nginx-path-global-proxy-send-timeout() {
+fn-nginx-botika-global-proxy-send-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "proxy-send-timeout"
 }
 
-fn-nginx-path-send-timeout() {
+fn-nginx-botika-send-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" "send-timeout"
 }
 
-fn-nginx-path-computed-send-timeout() {
+fn-nginx-botika-computed-send-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "send-timeout"
 }
 
-fn-nginx-path-global-send-timeout() {
+fn-nginx-botika-global-send-timeout() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "send-timeout"
 }
 
-fn-nginx-path-underscore-in-headers() {
+fn-nginx-botika-underscore-in-headers() {
   declare APP="$1"
   fn-get-property --app "$APP" "underscore-in-headers"
 }
 
-fn-nginx-path-computed-underscore-in-headers() {
+fn-nginx-botika-computed-underscore-in-headers() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "underscore-in-headers"
 }
 
-fn-nginx-path-global-underscore-in-headers() {
+fn-nginx-botika-global-underscore-in-headers() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "underscore-in-headers"
 }
 
-fn-nginx-path-x-forwarded-for-value() {
+fn-nginx-botika-x-forwarded-for-value() {
   declare APP="$1"
   fn-get-property --app "$APP" "x-forwarded-for-value"
 }
 
-fn-nginx-path-computed-x-forwarded-for-value() {
+fn-nginx-botika-computed-x-forwarded-for-value() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "x-forwarded-for-value"
 }
 
-fn-nginx-path-global-x-forwarded-for-value() {
+fn-nginx-botika-global-x-forwarded-for-value() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "x-forwarded-for-value"
 }
 
-fn-nginx-path-x-forwarded-port-value() {
+fn-nginx-botika-x-forwarded-port-value() {
   declare APP="$1"
   fn-get-property --app "$APP" "x-forwarded-port-value"
 }
 
-fn-nginx-path-computed-x-forwarded-port-value() {
+fn-nginx-botika-computed-x-forwarded-port-value() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "x-forwarded-port-value"
 }
 
-fn-nginx-path-global-x-forwarded-port-value() {
+fn-nginx-botika-global-x-forwarded-port-value() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "x-forwarded-port-value"
 }
 
-fn-nginx-path-x-forwarded-proto-value() {
+fn-nginx-botika-x-forwarded-proto-value() {
   declare APP="$1"
   fn-get-property --app "$APP" "x-forwarded-proto-value"
 }
 
-fn-nginx-path-computed-x-forwarded-proto-value() {
+fn-nginx-botika-computed-x-forwarded-proto-value() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "x-forwarded-proto-value"
 }
 
-fn-nginx-path-global-x-forwarded-proto-value() {
+fn-nginx-botika-global-x-forwarded-proto-value() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "x-forwarded-proto-value"
 }
 
-fn-nginx-path-x-forwarded-ssl() {
+fn-nginx-botika-x-forwarded-ssl() {
   declare APP="$1"
   fn-get-property --app "$APP" "x-forwarded-ssl"
 }
 
-fn-nginx-path-computed-x-forwarded-ssl() {
+fn-nginx-botika-computed-x-forwarded-ssl() {
   declare APP="$1"
   fn-get-property --app "$APP" --computed "x-forwarded-ssl"
 }
 
-fn-nginx-path-global-x-forwarded-ssl() {
+fn-nginx-botika-global-x-forwarded-ssl() {
   declare APP="$1"
   fn-get-property --app "$APP" --global "x-forwarded-ssl"
 }
 
-fn-nginx-path-vhosts-nginx-path-init-cmd() {
+fn-nginx-botika-nginx-botika-init-cmd() {
   declare desc="executes nginx init cmd if available"
   declare CMD="$1"
   local NGINX_INIT_NAME="nginx"
 
-  if fn-nginx-path-vhosts-uses-openresty; then
+  if fn-nginx-botika-uses-openresty; then
     NGINX_INIT_NAME="openresty"
   fi
 
@@ -682,16 +682,16 @@ fn-nginx-path-vhosts-nginx-path-init-cmd() {
   esac
 }
 
-fn-nginx-path-vhosts-nginx-path-location() {
+fn-nginx-botika-nginx-botika-location() {
   declare desc="check that nginx is at the expected location and return it"
-  fn-nginx-path-vhosts-nginx-location
+  fn-nginx-botika-nginx-location
 }
 
-fn-nginx-path-vhosts-nginx-path-is-running() {
+fn-nginx-botika-nginx-botika-is-running() {
   declare desc="check if nginx is running"
   local NGINX_INIT_NAME="nginx"
 
-  if fn-nginx-path-vhosts-uses-openresty; then
+  if fn-nginx-botika-uses-openresty; then
     NGINX_INIT_NAME="openresty"
   fi
 
@@ -711,15 +711,15 @@ fn-nginx-path-vhosts-nginx-path-is-running() {
   esac
 }
 
-fn-nginx-path-vhosts-manage-hsts() {
+fn-nginx-botika-manage-hsts() {
   declare desc="manages hsts for nginx"
   declare APP="$1" SSL_INUSE="$2"
-  local HSTS_COMPUTED_CONF="$(plugn trigger nginx-path-computed-hsts "$APP")"
+  local HSTS_COMPUTED_CONF="$(plugn trigger nginx-botika-computed-hsts "$APP")"
 
   if [[ "$SSL_INUSE" == "true" ]] && [[ "$HSTS_COMPUTED_CONF" == "true" ]]; then
-    local HSTS_MAX_AGE="$(fn-nginx-path-computed-hsts-max-age "$APP")"
-    local HSTS_INCLUDE_SUBDOMAINS="$(fn-nginx-path-computed-hsts-include-subdomains "$APP")"
-    local HSTS_PRELOAD="$(fn-nginx-path-computed-hsts-preload "$APP")"
+    local HSTS_MAX_AGE="$(fn-nginx-botika-computed-hsts-max-age "$APP")"
+    local HSTS_INCLUDE_SUBDOMAINS="$(fn-nginx-botika-computed-hsts-include-subdomains "$APP")"
+    local HSTS_PRELOAD="$(fn-nginx-botika-computed-hsts-preload "$APP")"
 
     local HSTS_HEADERS="max-age=$HSTS_MAX_AGE"
     [[ "$HSTS_INCLUDE_SUBDOMAINS" == "true" ]] && HSTS_HEADERS="$HSTS_HEADERS; includeSubDomains"

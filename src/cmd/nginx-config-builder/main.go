@@ -1,12 +1,12 @@
 package main
 
 import (
-	dokkuproperty "dokku-nginx-path-vhosts/src/pkg/dokku_property"
+	dokkuproperty "dokku-nginx-botika/src/pkg/dokku_property"
 	"flag"
 	"fmt"
 )
 
-var configFilePathPropertyName string = "nginx-path-vhost-config-file"
+var configFilePathPropertyName string = "nginx-botika-vhost-config-file"
 
 func main() {
 

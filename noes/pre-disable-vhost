@@ -4,16 +4,16 @@ set -eo pipefail
 source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
 source "$PLUGIN_AVAILABLE_PATH/config/functions"
 
-trigger-nginx-path-vhosts-pre-disable-vhost() {
+trigger-nginx-botika-pre-disable-vhost() {
   declare desc="unset port prior to vhosts being disabled"
   declare trigger="pre-disable-vhost"
   declare APP="$1"
 
-  if [[ "$(plugn trigger proxy-type "$APP")" == "nginx-path" ]]; then
+  if [[ "$(plugn trigger proxy-type "$APP")" == "nginx-botika" ]]; then
     DOKKU_QUIET_OUTPUT=1 config_unset --no-restart "$APP" DOKKU_PROXY_PORT DOKKU_PROXY_SSL_PORT
     plugn trigger ports-clear "$APP"
   fi
 }
 
-# trigger-nginx-path-vhosts-pre-disable-vhost "$@"
+# trigger-nginx-botika-pre-disable-vhost "$@"
 echo "pre-disable-vhost" "$@"

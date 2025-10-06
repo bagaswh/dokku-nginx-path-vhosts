@@ -5,16 +5,16 @@ source "$PLUGIN_CORE_AVAILABLE_PATH/common/property-functions"
 _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/internal-functions"
 
-trigger-nginx-path-vhosts-post-app-rename-setup() {
+trigger-nginx-botika-post-app-rename-setup() {
   declare desc="calls proxy-clear-config"
   declare trigger="post-app-rename-setup"
   declare OLD_APP="$1" NEW_APP="$2"
 
-  fn-plugin-property-clone "nginx-path" "$OLD_APP" "$NEW_APP"
-  fn-plugin-property-destroy "nginx-path" "$OLD_APP"
+  fn-plugin-property-clone "nginx-botika" "$OLD_APP" "$NEW_APP"
+  fn-plugin-property-destroy "nginx-botika" "$OLD_APP"
   plugn trigger proxy-clear-config "$NEW_APP"
 }
 
-# trigger-nginx-path-vhosts-post-app-rename-setup "$@"
+# trigger-nginx-botika-post-app-rename-setup "$@"
 
 echo "post-app-rename-setup" "$@"

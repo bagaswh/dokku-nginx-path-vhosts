@@ -6,7 +6,7 @@ source "$_DIR/config"
 source "$_DIR/functions"
 source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
 
-# trigger-nginx-path-vhosts-proxy-build-config() {
+# trigger-nginx-botika-proxy-build-config() {
 #   declare desc="build nginx config to proxy app containers from command line"
 #   declare trigger="proxy-build-config"
 #   declare APP="$1"

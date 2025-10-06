@@ -8,18 +8,18 @@ source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
 source "$PLUGIN_CORE_AVAILABLE_PATH/common/property-functions"
 source "$PLUGIN_AVAILABLE_PATH/config/functions"
 
-trigger-nginx-path-vhosts-install() {
+trigger-nginx-botika-install() {
   declare desc="${PROXY_NAME} install trigger"
   declare trigger="install"
 
   fn-plugin-property-setup "$PROXY_NAME"
 
-  NGINX_BIN="$(fn-nginx-path-vhosts-nginx-location)"
+  NGINX_BIN="$(fn-nginx-botika-nginx-location)"
   NGINX_ROOT="/etc/nginx"
-  NGINX_LOG_ROOT="$(fn-nginx-path-log-root)"
+  NGINX_LOG_ROOT="$(fn-nginx-botika-log-root)"
   NGINX_INIT_NAME="nginx"
-  NGINX_SUDOERS_FILE="/etc/sudoers.d/dokku-nginx-path"
-  if fn-nginx-path-vhosts-uses-openresty; then
+  NGINX_SUDOERS_FILE="/etc/sudoers.d/dokku-nginx-botika"
+  if fn-nginx-botika-uses-openresty; then
     NGINX_ROOT="/usr/local/openresty/nginx/conf"
     NGINX_INIT_NAME="openresty"
     NGINX_SUDOERS_FILE="/etc/sudoers.d/dokku-openresty"
@@ -80,4 +80,4 @@ trigger-nginx-path-vhosts-install() {
   chown -R dokku:dokku /var/lib/dokku/data/${PROXY_NAME}/ 
 }
 
-trigger-nginx-path-vhosts-install "$@"
+trigger-nginx-botika-install "$@"

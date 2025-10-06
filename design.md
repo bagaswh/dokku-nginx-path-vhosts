@@ -1,4 +1,4 @@
-# dokku-nginx-path
+# dokku-nginx-botika
 
 ## Configuration
 
