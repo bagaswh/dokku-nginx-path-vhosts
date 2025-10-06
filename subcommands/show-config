@@ -5,4 +5,4 @@ source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
 _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/../command-functions"
 
-cmd-nginx-botika-show-config "$@"
+cmd-nginx-custom-show-config "$@"

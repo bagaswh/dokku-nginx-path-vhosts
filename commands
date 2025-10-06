@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-[[ " help nginx-botika:help " == *" $1 "* ]] || [[ "$1" == "${PROXY_NAME}:"* ]] || exit "$DOKKU_NOT_IMPLEMENTED_EXIT"
+[[ " help nginx-custom:help " == *" $1 "* ]] || [[ "$1" == "${PROXY_NAME}:"* ]] || exit "$DOKKU_NOT_IMPLEMENTED_EXIT"
 _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/help-functions"
 source "$_DIR/command-functions"
@@ -7,35 +7,35 @@ set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
 
 case "$1" in
-  help | nginx-botika:help)
-    cmd-nginx-botika-vhosts-help "$@"
+  help | nginx-custom:help)
+    cmd-nginx-custom-vhosts-help "$@"
     ;;
 
-  nginx-botika:access-logs)
+  nginx-custom:access-logs)
     source "$_DIR/subcommands/access-logs"
     ;;
 
-  nginx-botika:error-logs)
+  nginx-custom:error-logs)
     source "$_DIR/subcommands/error-logs"
     ;;
 
-  nginx-botika:report)
-    cmd-nginx-botika-report "$@"
+  nginx-custom:report)
+    cmd-nginx-custom-report "$@"
     ;;
 
-  nginx-botika:show-config)
-    cmd-nginx-botika-show-config "$@"
+  nginx-custom:show-config)
+    cmd-nginx-custom-show-config "$@"
     ;;
 
-  nginx-botika:validate-config)
-    cmd-nginx-botika-validate-config "$@"
+  nginx-custom:validate-config)
+    cmd-nginx-custom-validate-config "$@"
     ;;
 
-  nginx-botika:set)
+  nginx-custom:set)
     source "$_DIR/subcommands/set"
     ;;
 
-  nginx-botika:get)
+  nginx-custom:get)
     source "$_DIR/subcommands/get"
     ;;
 

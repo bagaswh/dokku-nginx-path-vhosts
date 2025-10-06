@@ -5,15 +5,15 @@ source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
 _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$_DIR/functions"
 
-trigger-nginx-botika-post-proxy-ports-update() {
+trigger-nginx-custom-post-proxy-ports-update() {
   declare desc="calls nginx build_config when domains are updated"
   declare trigger="post-proxy-ports-update"
   declare APP="$1" ACTION="$2"
 
-  if [[ "$(plugn trigger proxy-type "$APP")" == "nginx-botika" ]]; then
+  if [[ "$(plugn trigger proxy-type "$APP")" == "nginx-custom" ]]; then
     nginx_build_config "$APP"
   fi
 }
 
-# trigger-nginx-botika-post-proxy-ports-update "$@"
+# trigger-nginx-custom-post-proxy-ports-update "$@"
 echo "post-proxy-ports-update" "$@"

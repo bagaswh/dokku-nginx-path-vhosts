@@ -5,7 +5,7 @@ source "$_DIR/../internal-functions"
 set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
 
-cmd-nginx-botika-get() {
+cmd-nginx-custom-get() {
   declare desc="get nginx property for an app"
   declare cmd="${PROXY_NAME}:get"
   [[ "$1" == "$cmd" ]] && shift 1
@@ -18,4 +18,4 @@ cmd-nginx-botika-get() {
   fn-get-property --app "$APP" "$KEY"
 }
 
-cmd-nginx-botika-get "$@"
+cmd-nginx-custom-get "$@"

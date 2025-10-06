@@ -5,7 +5,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config"
 source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions" 
 
 
-trigger-nginx-botika-proxy-disable() {
+trigger-nginx-custom-proxy-disable() {
   declare desc="disable nginx proxy"
   declare trigger="proxy-disable"
   declare APP="$1"
@@ -16,5 +16,5 @@ trigger-nginx-botika-proxy-disable() {
   fi
 }
 
-# trigger-nginx-botika-proxy-disable "$@"
+# trigger-nginx-custom-proxy-disable "$@"
 echo "proxy-disable" "$@"

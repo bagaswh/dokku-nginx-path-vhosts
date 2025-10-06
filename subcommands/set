@@ -6,8 +6,8 @@ source "$PLUGIN_CORE_AVAILABLE_PATH/common/property-functions"
 set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
 
-cmd-nginx-botika-set() {
-  declare desc="set or clear an nginx-botika property for an app"
+cmd-nginx-custom-set() {
+  declare desc="set or clear an nginx-custom property for an app"
   declare cmd="${PROXY_NAME}:set"
   [[ "$1" == "$cmd" ]] && shift 1
   declare APP="$1" KEY="$2" VALUE="$3"
@@ -25,4 +25,4 @@ cmd-nginx-botika-set() {
   fi
 }
 
-cmd-nginx-botika-set "$@"
+cmd-nginx-custom-set "$@"

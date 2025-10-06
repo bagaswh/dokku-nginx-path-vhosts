@@ -2,8 +2,8 @@
 set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
 
-trigger-nginx-botika-dependencies() {
-  declare desc="installs dependencies for the nginx-botika plugin"
+trigger-nginx-custom-dependencies() {
+  declare desc="installs dependencies for the nginx-custom plugin"
   declare trigger="dependencies"
 
   case "$DOKKU_DISTRO" in
@@ -13,5 +13,5 @@ trigger-nginx-botika-dependencies() {
   esac
 }
 
-# trigger-nginx-botika-dependencies "$@"
+# trigger-nginx-custom-dependencies "$@"
 echo "dependencies" "$@"

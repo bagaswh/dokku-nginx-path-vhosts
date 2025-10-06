@@ -6,7 +6,7 @@ source "$_DIR/internal-functions"
 set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
 
-fn-nginx-botika-copy-from-image() {
+fn-nginx-custom-copy-from-image() {
   declare APP="$1" IMAGE_NAME="$2" CONF_SIGIL_PATH="$3" DOMAIN="$4" CONF_SCOPE="$5"
 
   conf_dest_path_base_dir="${DATA_DIRECTORY}/app-$APP/"
@@ -28,7 +28,7 @@ fn-nginx-botika-copy-from-image() {
   fi
 }
 
-fn-nginx-botika-copy-from-directory() {
+fn-nginx-custom-copy-from-directory() {
   set -x
   declare APP="$1" SOURCECODE_WORK_DIR="$2" CONF_SIGIL_PATH="$3" DOMAIN="$4" CONF_SCOPE="$5"
 
@@ -51,7 +51,7 @@ fn-nginx-botika-copy-from-directory() {
   popd &>/dev/null || pushd "/tmp" >/dev/null
 }
 
-trigger-nginx-botika-post-extract() {
+trigger-nginx-custom-post-extract() {
   declare desc="${PROXY_NAME} post-extract plugin trigger"
   declare trigger="post-extract"
   declare APP="$1" SOURCECODE_WORK_DIR="$2"
@@ -63,9 +63,9 @@ trigger-nginx-botika-post-extract() {
 
   for domain in $domains; do
     local CONF_SIGIL_PATHS=(
-      "location:$(fn-nginx-botika-computed-nginx-conf-location-sigil-path "$APP" "$domain")"
-      "server-block:$(fn-nginx-botika-computed_nginx-conf-server-block-sigil-path "$APP" "$domain")"
-      "http-block:$(fn-nginx-botika-computed_nginx-conf-http-block-sigil-path "$APP" "$domain")"
+      "location:$(fn-nginx-custom-computed-nginx-conf-location-sigil-path "$APP" "$domain")"
+      "server-block:$(fn-nginx-custom-computed_nginx-conf-server-block-sigil-path "$APP" "$domain")"
+      "http-block:$(fn-nginx-custom-computed_nginx-conf-http-block-sigil-path "$APP" "$domain")"
     )
 
     for CONF_SIGIL_PATH_ITEM in "${CONF_SIGIL_PATHS[@]}"; do
@@ -73,12 +73,12 @@ trigger-nginx-botika-post-extract() {
       local CONF_SIGIL_PATH="${CONF_SIGIL_PATH_ITEM#*:}"
       echo "Scope: $SCOPE, Path: $CONF_SIGIL_PATH"
       if [[ -n "$app_source_image" ]]; then
-        fn-nginx-botika-copy-from-image "$APP" "$app_source_image" "$CONF_SIGIL_PATH" "$domain" "$SCOPE"
+        fn-nginx-custom-copy-from-image "$APP" "$app_source_image" "$CONF_SIGIL_PATH" "$domain" "$SCOPE"
       else
-        fn-nginx-botika-copy-from-directory "$APP" "$SOURCECODE_WORK_DIR" "$CONF_SIGIL_PATH" "$domain" "$SCOPE"
+        fn-nginx-custom-copy-from-directory "$APP" "$SOURCECODE_WORK_DIR" "$CONF_SIGIL_PATH" "$domain" "$SCOPE"
       fi
     done
   done
 }
 
-trigger-nginx-botika-post-extract "$@"
+trigger-nginx-custom-post-extract "$@"

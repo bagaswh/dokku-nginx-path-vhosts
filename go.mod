@@ -1,4 +1,4 @@
-module dokku-nginx-botika
+module dokku-nginx-custom
 
 go 1.23.0
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	dokkuproperty "dokku-nginx-botika/src/pkg/dokku_property"
+	dokkuproperty "dokku-nginx-custom/src/pkg/dokku_property"
 	"fmt"
 	"log"
 	"os"
