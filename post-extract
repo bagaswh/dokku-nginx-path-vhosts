@@ -13,14 +13,15 @@ fn-nginx-custom-copy-from-image() {
   
   mkdir -p "$conf_dest_path_base_dir"
 
-  conf_dest_path_filename_prefix="nginx-custom-config.yaml"
-  conf_dest_path_with_pid="$conf_dest_path_base_dir/$conf_dest_path_filename_prefix.$DOKKU_PID"
+  conf_dest_path_filename_prefix="$(basename ${CONFIG_FILE_PATH})"
+  conf_dest_path="$conf_dest_path_base_dir/$conf_dest_path_filename_prefix"
+  conf_dest_path_with_pid="$conf_dest_path.$DOKKU_PID"
   conf_dest_missing_path="$conf_dest_path_with_pid.missing"
 
   find "$conf_dest_path_base_dir" -maxdepth 1 -type f -name "$conf_dest_path_filename_prefix.*" -delete
-  copy_from_image "$IMAGE_NAME" "$CONFIG_FILE_PATH" "$conf_dest_path_with_pid" 2>/dev/null || true
+  copy_from_image "$IMAGE_NAME" "$CONFIG_FILE_PATH" "$conf_dest_path" 2>/dev/null || true
 
-  if [[ ! -f "$conf_dest_path_with_pid" ]]; then
+  if [[ ! -f "$conf_dest_path" ]]; then
     return
   fi
 }
