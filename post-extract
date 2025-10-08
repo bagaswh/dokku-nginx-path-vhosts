@@ -22,8 +22,8 @@ fn-nginx-custom-copy-from-image() {
   copy_from_image "$IMAGE_NAME" "$CONFIG_FILE_PATH" "$conf_dest_path_with_pid" 2>/dev/null || true
 
   if [[ ! -f "$conf_dest_path_with_pid" ]]; then
-    touch "$conf_dest_missing_path"
-    return
+    echo "config file $CONFIG_FILE_PATH is not found in image $IMAGE_NAME"
+    exit 1
   fi
 }
 
