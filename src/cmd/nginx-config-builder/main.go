@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 )
 
 var configFilePathPropertyName string = "config-file"
@@ -21,7 +22,18 @@ func main() {
 		log.Fatalln("app name (positional arg 2nd) should be non-empty")
 	}
 
+	dataDirectory := os.Getenv("DATA_DIRECTORY")
+	if dataDirectory == "" {
+		log.Fatalln("DATA_DIRECTORY environment variable is required")
+	}
+
 	configFilePath := dokkuproperty.GetAppProperty(appName, configFilePathPropertyName)
 	fmt.Println("configFilePath=", configFilePath)
 
+	fileContent, err := os.ReadFile(path.Join(dataDirectory, configFilePath))
+	if err != nil {
+		log.Fatalln("error reading config file:", err)
+	}
+
+	fmt.Println(string(fileContent))
 }

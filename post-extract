@@ -23,8 +23,7 @@ fn-nginx-custom-copy-from-image() {
   cat "$conf_dest_path_with_pid"
 
   if [[ ! -f "$conf_dest_path_with_pid" ]]; then
-    echo "config file $CONFIG_FILE_PATH is not found in image $IMAGE_NAME"
-    exit 1
+    return
   fi
 }
 
@@ -40,6 +39,4 @@ trigger-nginx-custom-post-extract() {
   fn-nginx-custom-copy-from-image "$APP" "$app_source_image" "$config_file_path"
 }
 
-# trigger-nginx-custom-post-extract "$@"
-echo "PAILPAILPAIL"
-exit 1
+trigger-nginx-custom-post-extract "$@"
