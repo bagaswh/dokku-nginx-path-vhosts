@@ -4,7 +4,6 @@ import (
 	dokkuproperty "dokku-nginx-custom/src/pkg/dokku_property"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/dokku/dokku/plugins/common"
@@ -19,7 +18,7 @@ func main() {
 	var appName string
 	flag.StringVar(&appName, "app", "", "the app name")
 	if appName == "" {
-		log.Fatalln("--app flag is required")
+		// log.Fatalln("--app flag is required")
 	}
 
 	configFilePath := dokkuproperty.GetAppProperty(appName, configFilePathPropertyName)
