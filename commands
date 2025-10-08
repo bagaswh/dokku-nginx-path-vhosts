@@ -6,6 +6,8 @@ source "$_DIR/command-functions"
 set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
 
+echo "$1"
+
 case "$1" in
   help | nginx-custom:help)
     cmd-nginx-custom-vhosts-help "$@"
