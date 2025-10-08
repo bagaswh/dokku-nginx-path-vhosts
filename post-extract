@@ -9,7 +9,7 @@ set -eo pipefail
 fn-nginx-custom-copy-from-image() {
   declare APP="$1" IMAGE_NAME="$2" CONFIG_FILE_PATH="$3"
 
-  conf_dest_path_base_dir="${DATA_DIRECTORY}/app-$APP/"
+  conf_dest_path_base_dir="${DATA_DIRECTORY}/app-$APP/$(dirname ${CONFIG_FILE_PATH})"
   
   mkdir -p "$conf_dest_path_base_dir"
 
@@ -19,8 +19,6 @@ fn-nginx-custom-copy-from-image() {
 
   find "$conf_dest_path_base_dir" -maxdepth 1 -type f -name "$conf_dest_path_filename_prefix.*" -delete
   copy_from_image "$IMAGE_NAME" "$CONFIG_FILE_PATH" "$conf_dest_path_with_pid" 2>/dev/null || true
-
-  cat "$conf_dest_path_with_pid"
 
   if [[ ! -f "$conf_dest_path_with_pid" ]]; then
     return
