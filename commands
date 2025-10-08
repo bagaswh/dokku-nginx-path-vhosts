@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-[[ " help nginx-custom:help " == *" $1 "* ]] || [[ "$1" == "${PROXY_NAME}:"* ]] || exit "$DOKKU_NOT_IMPLEMENTED_EXIT"
 _DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$_DIR/config"
+[[ " help nginx-custom:help " == *" $1 "* ]] || [[ "$1" == "${PROXY_NAME}:"* ]] || exit "$DOKKU_NOT_IMPLEMENTED_EXIT"
 source "$_DIR/help-functions"
 source "$_DIR/command-functions"
 set -eo pipefail
 [[ $DOKKU_TRACE ]] && set -x
-
-echo "$1"
 
 case "$1" in
   help | nginx-custom:help)
