@@ -160,6 +160,9 @@ get_custom_nginx_template() {
 }
 
 nginx_build_config() {
+  declare desc="build nginx config to proxy app containers using sigil"
+  declare APP="$1"
+
   DOKKU_APP_LISTENERS="$(plugn trigger network-get-listeners "$APP" "web" | xargs)"
 
   echo -e "DOKKU_APP_LISTENERS: $DOKKU_APP_LISTENERS"
@@ -187,8 +190,12 @@ nginx_build_config() {
     fi
     echo -e "PROXY_UPSTREAM_PORTS: $PROXY_UPSTREAM_PORTS"
   done < <(plugn trigger ports-get "$APP")
-  PROXY_PORT_MAP="$(echo "$proxy_port_map" | xargs)" # trailing spaces mess up default template
+  
+  PROXY_PORT_MAP="$(echo "$proxy_port_map" | xargs)"
+  echo -e "PROXY_PORT_MAP: $PROXY_PORT_MAP"
+
   local PROXY_UPSTREAM_PORTS="$(echo "$PROXY_UPSTREAM_PORTS" | xargs)"
+  echo -e "PROXY_UPSTREAM_PORTS: $PROXY_UPSTREAM_PORTS"
 
   # "$_DIR/nginx-config-builder" "$@"
 }
