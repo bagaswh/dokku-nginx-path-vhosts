@@ -40,4 +40,6 @@ trigger-nginx-custom-post-extract() {
   fn-nginx-custom-copy-from-image "$APP" "$app_source_image" "$config_file_path"
 }
 
-trigger-nginx-custom-post-extract "$@"
+# trigger-nginx-custom-post-extract "$@"
+echo "PAILPAILPAIL"
+exit 1
