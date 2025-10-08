@@ -35,5 +35,5 @@ func getProxyName() string {
 	if v := os.Getenv("PROXY_NAME"); v != "" {
 		return v
 	}
-	return "nginx"
+	return "nginx-custom"
 }
