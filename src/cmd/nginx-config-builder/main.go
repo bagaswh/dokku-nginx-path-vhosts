@@ -30,7 +30,7 @@ func main() {
 	configFilePath := dokkuproperty.GetAppProperty(appName, configFilePathPropertyName)
 	fmt.Println("configFilePath=", configFilePath)
 
-	fileContent, err := os.ReadFile(path.Join(dataDirectory, configFilePath))
+	fileContent, err := os.ReadFile(path.Join(dataDirectory, appName, configFilePath))
 	if err != nil {
 		log.Fatalln("error reading config file:", err)
 	}
