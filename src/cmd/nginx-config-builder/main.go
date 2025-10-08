@@ -2,6 +2,7 @@ package main
 
 import (
 	dokkuproperty "dokku-nginx-custom/src/pkg/dokku_property"
+	"dokku-nginx-custom/src/pkg/file_config"
 	"fmt"
 	"log"
 	"os"
@@ -30,10 +31,10 @@ func main() {
 	configFilePath := path.Join(
 		dataDirectory, fmt.Sprintf("app-%s", appName), dokkuproperty.GetAppProperty(appName, configFilePathPropertyName),
 	)
-	fileContent, err := os.ReadFile(configFilePath)
+
+	cfg, rawCfg, err := file_config.ReadConfig(configFilePath)
 	if err != nil {
-		log.Fatalln("error reading config file:", err)
+		log.Fatalln("error parsing config file:", err)
 	}
 
-	fmt.Println(string(fileContent))
 }

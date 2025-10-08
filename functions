@@ -160,5 +160,35 @@ get_custom_nginx_template() {
 }
 
 nginx_build_config() {
-  "$_DIR/nginx-config-builder" "$@"
+  DOKKU_APP_LISTENERS="$(plugn trigger network-get-listeners "$APP" "web" | xargs)"
+
+  echo -e "DOKKU_APP_LISTENERS: $DOKKU_APP_LISTENERS"
+
+  plugn trigger ports-configure "$APP"
+  local PROXY_PORT=$(config_get "$APP" DOKKU_PROXY_PORT)
+  local PROXY_SSL_PORT=$(config_get "$APP" DOKKU_PROXY_SSL_PORT)
+  echo -e "PROXY_PORT: $PROXY_PORT"
+  echo -e "PROXY_SSL_PORT: $PROXY_SSL_PORT"
+
+  local PORT_MAP PROXY_PORT_MAP proxy_port_map
+  while read -r PORT_MAP; do
+    echo -e "PORT_MAP: $PORT_MAP"
+
+    local PROXY_UPSTREAM_SCHEME="$(awk -F ':' '{ print $1 }' <<<"$PORT_MAP")"
+    echo -e "PROXY_UPSTREAM_SCHEME: $PROXY_UPSTREAM_SCHEME"
+
+    proxy_port_map="$proxy_port_map $PORT_MAP"
+    echo -e "proxy_port_map: $proxy_port_map"
+
+    local PROXY_UPSTREAM_PORT="$(awk -F ':' '{ print $3 }' <<<"$PORT_MAP")"
+    echo -e "PROXY_UPSTREAM_PORT: $PROXY_UPSTREAM_PORT"
+    if [[ "$(is_val_in_list "$PROXY_UPSTREAM_PORT" "$PROXY_UPSTREAM_PORTS" " ")" == "false" ]]; then
+      local PROXY_UPSTREAM_PORTS+="$PROXY_UPSTREAM_PORT "
+    fi
+    echo -e "PROXY_UPSTREAM_PORTS: $PROXY_UPSTREAM_PORTS"
+  done < <(plugn trigger ports-get "$APP")
+  PROXY_PORT_MAP="$(echo "$proxy_port_map" | xargs)" # trailing spaces mess up default template
+  local PROXY_UPSTREAM_PORTS="$(echo "$PROXY_UPSTREAM_PORTS" | xargs)"
+
+  # "$_DIR/nginx-config-builder" "$@"
 }
