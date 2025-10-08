@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-var configFilePathPropertyName string = "nginx-custom-vhost-config-file"
+var configFilePathPropertyName string = "config-file"
 
 func main() {
 
