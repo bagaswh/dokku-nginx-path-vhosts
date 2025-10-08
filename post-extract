@@ -11,7 +11,6 @@ fn-nginx-custom-copy-from-image() {
 
   conf_dest_path_base_dir="${DATA_DIRECTORY}/app-$APP/"
   
-  whoami
   mkdir -p "$conf_dest_path_base_dir"
 
   conf_dest_path_filename_prefix="nginx-custom-config.yaml"
@@ -20,6 +19,8 @@ fn-nginx-custom-copy-from-image() {
 
   find "$conf_dest_path_base_dir" -maxdepth 1 -type f -name "$conf_dest_path_filename_prefix.*" -delete
   copy_from_image "$IMAGE_NAME" "$CONFIG_FILE_PATH" "$conf_dest_path_with_pid" 2>/dev/null || true
+
+  cat "$conf_dest_path_with_pid"
 
   if [[ ! -f "$conf_dest_path_with_pid" ]]; then
     echo "config file $CONFIG_FILE_PATH is not found in image $IMAGE_NAME"
