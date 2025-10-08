@@ -36,5 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatalln("error parsing config file:", err)
 	}
+	_ = cfg
+	_ = rawCfg
 
 }
