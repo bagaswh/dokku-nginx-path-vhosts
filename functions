@@ -178,24 +178,19 @@ nginx_build_config() {
     echo -e "PORT_MAP: $PORT_MAP"
 
     local PROXY_UPSTREAM_SCHEME="$(awk -F ':' '{ print $1 }' <<<"$PORT_MAP")"
-    echo -e "PROXY_UPSTREAM_SCHEME: $PROXY_UPSTREAM_SCHEME"
 
     proxy_port_map="$proxy_port_map $PORT_MAP"
-    echo -e "proxy_port_map: $proxy_port_map"
 
     local PROXY_UPSTREAM_PORT="$(awk -F ':' '{ print $3 }' <<<"$PORT_MAP")"
-    echo -e "PROXY_UPSTREAM_PORT: $PROXY_UPSTREAM_PORT"
     if [[ "$(is_val_in_list "$PROXY_UPSTREAM_PORT" "$PROXY_UPSTREAM_PORTS" " ")" == "false" ]]; then
       local PROXY_UPSTREAM_PORTS+="$PROXY_UPSTREAM_PORT "
     fi
-    echo -e "PROXY_UPSTREAM_PORTS: $PROXY_UPSTREAM_PORTS"
   done < <(plugn trigger ports-get "$APP")
   
   PROXY_PORT_MAP="$(echo "$proxy_port_map" | xargs)"
-  echo -e "PROXY_PORT_MAP: $PROXY_PORT_MAP"
 
   local PROXY_UPSTREAM_PORTS="$(echo "$PROXY_UPSTREAM_PORTS" | xargs)"
-  echo -e "PROXY_UPSTREAM_PORTS: $PROXY_UPSTREAM_PORTS"
 
-  # "$_DIR/nginx-config-builder" "$@"
+  export DOKKU_APP_LISTENERS PROXY_PORT PROXY_PORT_MAP PROXY_UPSTREAM_PORTS
+  "$_DIR/nginx-config-builder" "$@"
 }
