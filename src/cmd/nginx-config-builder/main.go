@@ -27,10 +27,10 @@ func main() {
 		log.Fatalln("DATA_DIRECTORY environment variable is required")
 	}
 
-	configFilePath := dokkuproperty.GetAppProperty(appName, configFilePathPropertyName)
-	fmt.Println("configFilePath=", configFilePath)
-
-	fileContent, err := os.ReadFile(path.Join(dataDirectory, appName, configFilePath))
+	configFilePath := path.Join(
+		dataDirectory, fmt.Sprintf("app-%s", appName), dokkuproperty.GetAppProperty(appName, configFilePathPropertyName),
+	)
+	fileContent, err := os.ReadFile(configFilePath)
 	if err != nil {
 		log.Fatalln("error reading config file:", err)
 	}
