@@ -15,7 +15,7 @@ get_nginx_location() {
 
 get_app_proxy_type() {
   local APP="$1"
-  echo "$(plugn trigger proxy-type "$APP")-vhosts"
+  plugn trigger proxy-type "$APP"
 }
 
 validate_nginx() {
