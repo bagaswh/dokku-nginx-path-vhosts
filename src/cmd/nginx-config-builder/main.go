@@ -21,8 +21,9 @@ func main() {
 	fmt.Println(configFilePath)
 
 	fmt.Println(
-		"nginx-custom=", common.PropertyGet("nginx-custom", appName, "config-file"),
-		"nginx-custom-vhosts=", common.PropertyGet("nginx-custom-vhosts", appName, "config-file"),
+		"nginx=", common.PropertyGet("nginx", "laravel-app", "config-file"),
+		"nginx-custom=", common.PropertyGet("nginx-custom", "laravel-app", "config-file"),
+		"nginx-custom-vhosts=", common.PropertyGet("nginx-custom-vhosts", "laravel-app", "config-file"),
 	)
 
 }
