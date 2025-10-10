@@ -58,8 +58,8 @@ type VariableConfig struct {
 
 type CacheConfig struct {
 	Name      string   `yaml:"name" validate:"required" json:"name"`
-	CachePath string   `yaml:"cache_path" validate:"required" json:"proxy_cache_path"`
-	Flags     []string `yaml:"flags" validate:"required" json:"flags"`
+	CachePath string   `yaml:"proxy_cache_path" validate:"required" json:"proxy_cache_path"`
+	Flags     []string `yaml:"flags" json:"flags"`
 }
 
 type VhostConfig struct {

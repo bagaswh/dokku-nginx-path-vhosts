@@ -1,12 +1,11 @@
 package main
 
 import (
-	dokkuproperty "dokku-nginx-custom/src/pkg/dokku_property"
 	"dokku-nginx-custom/src/pkg/file_config"
+	"flag"
 	"fmt"
 	"log"
 	"os"
-	"path"
 )
 
 var configFilePathPropertyName string = "config-file"
@@ -40,24 +39,22 @@ func buildUpstreamConfig(appName string, config *file_config.Config) string {
 
 func main() {
 
-	if len(os.Args) < 2 {
-		log.Fatalln("app name (positional arg 2nd) is required")
+	var appName string
+	var configFilePath string
+	flag.StringVar(&appName, "app-name", "", "app name")
+	flag.StringVar(&configFilePath, "config-file-path", "", "path to config file")
+
+	flag.Parse()
+
+	required := []string{"app-name", "config-file-path"}
+
+	seen := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) { seen[f.Name] = true })
+	for _, req := range required {
+		if !seen[req] {
+			log.Fatalf("missing required -%s argument/flag", req)
+		}
 	}
-
-	appName := os.Args[1]
-
-	if appName == "" {
-		log.Fatalln("app name (positional arg 2nd) should be non-empty")
-	}
-
-	dataDirectory := os.Getenv("DATA_DIRECTORY")
-	if dataDirectory == "" {
-		log.Fatalln("DATA_DIRECTORY environment variable is required")
-	}
-
-	configFilePath := path.Join(
-		dataDirectory, fmt.Sprintf("app-%s", appName), dokkuproperty.GetAppProperty(appName, configFilePathPropertyName),
-	)
 
 	cfg, rawCfg, err := file_config.ReadConfig(configFilePath)
 	if err != nil {
