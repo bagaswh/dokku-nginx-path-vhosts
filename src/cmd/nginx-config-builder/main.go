@@ -1,14 +1,14 @@
 package main
 
 import (
-	"bytes"
 	"dokku-nginx-custom/src/pkg/file_config"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"strings"
-	"text/template"
+
+	"github.com/gliderlabs/sigil"
 )
 
 var configFilePathPropertyName string = "config-file"
@@ -22,20 +22,19 @@ func mustEnv(name string) string {
 }
 
 func buildUpstreamConfig(appName string, config *file_config.Config) string {
-
 	appListeners := strings.Split(mustEnv("DOKKU_APP_LISTENERS"), " ")
 	portMap := strings.Split(mustEnv("PROXY_PORT_MAP"), " ")
 	upstreamPorts := strings.Split(mustEnv("PROXY_UPSTREAM_PORTS"), " ")
 
 	templateStr := `
-	{{ range $upstreamPort := split .proxyUpstreamPorts " " }} 
-	upstream {{ $.app }}-{{ $upstreamPort }} {
-	{{ range $listeners := split $.appListeners " " }}
-	{{ $listenerList := split $listeners ":" }} 
-	{{ $listenerIP := index $listenerList 0 }}
-	  server {{ $listenerIP }}:{{ $upstreamPort }};{{ end }}
+	{% for upstreamPort in proxyUpstreamPorts %}
+	upstream {{ app }}-{{ upstreamPort }} {
+	{% for listeners in appListeners %}
+	{% set listenerList = listeners.split(':') %}
+	{% set listenerIP = listenerList[0] %}
+	  server {{ listenerIP }}:{{ upstreamPort }};{% endfor %}
 	}
-	{{ end }}
+	{% endfor %}
 	`
 
 	tmplData := map[string]any{
@@ -45,18 +44,12 @@ func buildUpstreamConfig(appName string, config *file_config.Config) string {
 		"proxyUpstreamPorts": portMap,
 	}
 
-	tmpl, err := template.New("").Parse(templateStr)
+	result, err := sigil.Execute([]byte(templateStr), tmplData, "template")
 	if err != nil {
 		log.Fatalln("failed to parse template:", err)
 	}
 
-	var tmplOut bytes.Buffer
-	err = tmpl.Execute(&tmplOut, tmplData)
-	if err != nil {
-		log.Fatalln("failed to execute template:", err)
-	}
-
-	return tmplOut.String()
+	return result.String()
 }
 
 func main() {
