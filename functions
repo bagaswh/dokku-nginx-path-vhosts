@@ -194,5 +194,5 @@ nginx_build_config() {
   export DOKKU_APP_LISTENERS PROXY_PORT PROXY_PORT_MAP PROXY_UPSTREAM_PORTS
   "$_DIR/nginx-config-builder" \
     -app-name "$APP" \
-    -config-file-path "$(fn-nginx-custom-config-file "$APP")"
+    -config-file-path "${DATA_DIRECTORY}/app-$APP/$(fn-nginx-custom-config-file "$APP")"
 }
