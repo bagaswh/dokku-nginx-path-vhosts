@@ -26,16 +26,14 @@ func buildUpstreamConfig(appName string, config *file_config.Config) string {
 	portMap := strings.Split(mustEnv("PROXY_PORT_MAP"), " ")
 	upstreamPorts := strings.Split(mustEnv("PROXY_UPSTREAM_PORTS"), " ")
 
-	templateStr := `
-	{% for upstreamPort in proxyUpstreamPorts %}
-	upstream {{ app }}-{{ upstreamPort }} {
-	{% for listeners in appListeners %}
-	{% set listenerList = listeners.split(':') %}
-	{% set listenerIP = listenerList[0] %}
-	  server {{ listenerIP }}:{{ upstreamPort }};{% endfor %}
-	}
-	{% endfor %}
-	`
+	templateStr := `{{ range .upstreamPort := .proxyUpstreamPorts | split " " }} 
+    upstream {{ .app }}-{{ .upstreamPort }} {
+    {{ range .listeners := .appListeners | split " " }}
+    {{ .listenerList := .listeners | split ":" }} 
+    {{ .listenerIP := index .listenerList 0 }}
+      server {{ .listenerIP }}:{{ .upstreamPort }};{{ end }}
+    }
+    {{ end }}`
 
 	tmplData := map[string]any{
 		"app":                appName,
