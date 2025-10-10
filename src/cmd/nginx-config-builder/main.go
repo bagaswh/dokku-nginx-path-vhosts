@@ -21,28 +21,18 @@ func mustEnv(name string) string {
 	return value
 }
 
-func buildUpstreamConfig(appName string, config *file_config.Config) string {
-	appListeners := strings.Split(mustEnv("DOKKU_APP_LISTENERS"), " ")
-	portMap := strings.Split(mustEnv("PROXY_PORT_MAP"), " ")
-	upstreamPorts := strings.Split(mustEnv("PROXY_UPSTREAM_PORTS"), " ")
+func buildUpstreamConfig(appName string, config *file_config.Config, data map[string]any) string {
 
-	templateStr := `{{ range .upstreamPort := .proxyUpstreamPorts | split " " }} 
+	templateStr := `{{ range $upstreamPort := .proxyUpstreamPorts | split " " }} 
     upstream {{ .app }}-{{ .upstreamPort }} {
-    {{ range .listeners := .appListeners | split " " }}
-    {{ .listenerList := .listeners | split ":" }} 
-    {{ .listenerIP := index .listenerList 0 }}
+    {{ range $listeners := .appListeners | split " " }}
+    {{ $listenerList := .listeners | split ":" }} 
+    {{ $listenerIP := index .listenerList 0 }}
       server {{ .listenerIP }}:{{ .upstreamPort }};{{ end }}
     }
     {{ end }}`
 
-	tmplData := map[string]any{
-		"app":                appName,
-		"upstreamPorts":      upstreamPorts,
-		"appListeners":       appListeners,
-		"proxyUpstreamPorts": portMap,
-	}
-
-	result, err := sigil.Execute([]byte(templateStr), tmplData, "template")
+	result, err := sigil.Execute([]byte(templateStr), data, "template")
 	if err != nil {
 		log.Fatalln("failed to parse template:", err)
 	}
@@ -76,7 +66,18 @@ func main() {
 	_ = cfg
 	_ = rawCfg
 
-	upstreamCfg := buildUpstreamConfig(appName, cfg)
+	appListeners := strings.Split(mustEnv("DOKKU_APP_LISTENERS"), " ")
+	portMap := strings.Split(mustEnv("PROXY_PORT_MAP"), " ")
+	upstreamPorts := strings.Split(mustEnv("PROXY_UPSTREAM_PORTS"), " ")
+
+	tmplData := map[string]any{
+		"app":                appName,
+		"upstreamPorts":      upstreamPorts,
+		"appListeners":       appListeners,
+		"proxyUpstreamPorts": portMap,
+	}
+
+	upstreamCfg := buildUpstreamConfig(appName, cfg, tmplData)
 	fmt.Println(upstreamCfg)
 
 }
