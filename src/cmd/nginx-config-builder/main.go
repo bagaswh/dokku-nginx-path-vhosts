@@ -11,6 +11,33 @@ import (
 
 var configFilePathPropertyName string = "config-file"
 
+func buildUpstreamConfig(appName string, config *file_config.Config) string {
+	resultCfg := ""
+
+	// first, build default upstream retrieved from env vars
+	appListeners := os.Getenv("DOKKU_APP_LISTENERS")
+	portMap := os.Getenv("PROXY_PORT_MAP")
+	upstreamPorts := os.Getenv("PROXY_UPSTREAM_PORTS")
+
+	fmt.Println("appListeners:", appListeners)
+	fmt.Println("portMap:", portMap)
+	fmt.Println("upstreamPorts:", upstreamPorts)
+
+	// 	templateStr := `
+	// {{ if $.DOKKU_APP_WEB_LISTENERS }}
+	// {{ range $upstream_port := $.PROXY_UPSTREAM_PORTS | split " " }}
+	// upstream {{ $.APP }}-{{ $upstream_port }} {
+	// {{ range $listeners := $.DOKKU_APP_WEB_LISTENERS | split " " }}
+	// {{ $listener_list := $listeners | split ":" }}
+	// {{ $listener_ip := index $listener_list 0 }}
+	//   server {{ $listener_ip }}:{{ $upstream_port }};{{ end }}
+	// }
+	// {{ end }}{{ end }}
+	// `
+
+	return resultCfg
+}
+
 func main() {
 
 	if len(os.Args) < 2 {
@@ -38,5 +65,8 @@ func main() {
 	}
 	_ = cfg
 	_ = rawCfg
+
+	upstreamCfg := buildUpstreamConfig(appName, cfg)
+	fmt.Println(upstreamCfg)
 
 }
