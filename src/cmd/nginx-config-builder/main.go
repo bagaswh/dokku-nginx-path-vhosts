@@ -22,25 +22,24 @@ func mustEnv(name string) string {
 }
 
 func buildUpstreamConfig(appName string, config *file_config.Config) string {
-	resultCfg := ""
 
-	// first, build default upstream retrieved from env vars
 	appListeners := strings.Split(mustEnv("DOKKU_APP_LISTENERS"), " ")
 	portMap := strings.Split(mustEnv("PROXY_PORT_MAP"), " ")
 	upstreamPorts := strings.Split(mustEnv("PROXY_UPSTREAM_PORTS"), " ")
 
 	templateStr := `
-	{{ range .upstreamPort := .proxyUpstreamPorts | split " " }} 
-	upstream {{ .app }}-{{ .upstreamPort }} {
-	{{ range .listeners := .appListeners | split " " }}
-	{{ .listenerList := .listeners | split ":" }} 
-	{{ .listenerIP := index .listenerList 0 }}
-	  server {{ .listenerIP }}:{{ .upstreamPort }};{{ end }}
+	{{ range $upstreamPort := split .proxyUpstreamPorts " " }} 
+	upstream {{ $.app }}-{{ $upstreamPort }} {
+	{{ range $listeners := split $.appListeners " " }}
+	{{ $listenerList := split $listeners ":" }} 
+	{{ $listenerIP := index $listenerList 0 }}
+	  server {{ $listenerIP }}:{{ $upstreamPort }};{{ end }}
 	}
 	{{ end }}
 	`
 
 	tmplData := map[string]any{
+		"app":                appName,
 		"upstreamPorts":      upstreamPorts,
 		"appListeners":       appListeners,
 		"proxyUpstreamPorts": portMap,
@@ -57,7 +56,7 @@ func buildUpstreamConfig(appName string, config *file_config.Config) string {
 		log.Fatalln("failed to execute template:", err)
 	}
 
-	return resultCfg
+	return tmplOut.String()
 }
 
 func main() {
