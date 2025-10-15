@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"dario.cat/mergo"
 	"github.com/gliderlabs/sigil"
@@ -466,7 +467,8 @@ func getCurrentConfigVersionDirectory(nginxConfigDirectory string) (string, erro
 	}
 
 	if len(files) == 0 {
-		return "", fmt.Errorf("no release directories found")
+		ddmmyy := time.Now().Format("2006-01-02")
+		return fmt.Sprintf("%s/release-%s.1", nginxConfigDirectory, ddmmyy), nil
 	}
 
 	var latestDir string
@@ -535,9 +537,10 @@ func getPreviousVersionDirectory(nginxConfigDirectory string) (string, error) {
 func copyConfigToRelease(configContent string, releaseDir string, filename string) error {
 	configPath := path.Join(releaseDir, filename)
 
-	// Create the release directory if it doesn't exist
-	if err := os.MkdirAll(releaseDir, 0755); err != nil {
-		return fmt.Errorf("failed to create release directory: %w", err)
+	// Create the full directory path including any subdirectories
+	configDir := path.Dir(configPath)
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory %s: %w", configDir, err)
 	}
 
 	// Write the config content to the file
@@ -741,7 +744,7 @@ func main() {
 
 	// Copy location configs for each vhost
 	for vhost, locationConfig := range locationConfigs {
-		configFiles[fmt.Sprintf("%s.conf", vhost)] = locationConfig
+		configFiles[fmt.Sprintf("vhosts/%s/vhost.conf", vhost)] = locationConfig
 	}
 
 	// Copy all config files to the release directory

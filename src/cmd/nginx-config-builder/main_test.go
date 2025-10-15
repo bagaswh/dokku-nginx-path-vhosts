@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestGetCurrentConfigVersionDirectory(t *testing.T) {
@@ -51,12 +53,15 @@ func TestGetCurrentConfigVersionDirectory(t *testing.T) {
 
 		result, err := getCurrentConfigVersionDirectory(emptyDir)
 
-		if err == nil {
-			t.Errorf("Expected error for empty directory, got: %s", result)
+		if err != nil {
+			t.Errorf("Expected no error for empty directory, got: %v", err)
 		}
 
-		if result != "" {
-			t.Errorf("Expected empty string, got: %s", result)
+		// Should return a new release directory path with today's date
+		expectedDate := time.Now().Format("2006-01-02")
+		expectedPath := filepath.Join(emptyDir, fmt.Sprintf("release-%s.1", expectedDate))
+		if result != expectedPath {
+			t.Errorf("Expected %s, got: %s", expectedPath, result)
 		}
 	})
 
@@ -67,13 +72,16 @@ func TestGetCurrentConfigVersionDirectory(t *testing.T) {
 
 		result, err := getCurrentConfigVersionDirectory(nonExistentDir)
 
-		// The function should return an error for non-existent directories
-		if err == nil {
-			t.Errorf("Expected error for non-existent directory, got: %s", result)
+		// The function should return a new release directory path even for non-existent directories
+		if err != nil {
+			t.Errorf("Expected no error for non-existent directory, got: %v", err)
 		}
 
-		if result != "" {
-			t.Errorf("Expected empty string, got: %s", result)
+		// Should return a new release directory path with today's date
+		expectedDate := time.Now().Format("2006-01-02")
+		expectedPath := filepath.Join(nonExistentDir, fmt.Sprintf("release-%s.1", expectedDate))
+		if result != expectedPath {
+			t.Errorf("Expected %s, got: %s", expectedPath, result)
 		}
 	})
 
@@ -292,6 +300,40 @@ func TestDeploymentFunctions(t *testing.T) {
 		}
 	})
 
+	// Test copyConfigToRelease with nested directories
+	t.Run("CopyConfigToReleaseWithNestedDirs", func(t *testing.T) {
+		tempDir := t.TempDir()
+		releaseDir := filepath.Join(tempDir, "release-251201.1")
+		configContent := "vhost config content"
+		filename := "vhosts/example.com/vhost.conf"
+
+		err := copyConfigToRelease(configContent, releaseDir, filename)
+		if err != nil {
+			t.Errorf("Expected no error, got: %v", err)
+		}
+
+		// Verify the nested directory was created
+		vhostDir := filepath.Join(releaseDir, "vhosts", "example.com")
+		if _, err := os.Stat(vhostDir); os.IsNotExist(err) {
+			t.Errorf("Expected vhost directory to exist at %s", vhostDir)
+		}
+
+		// Verify the file was created
+		configPath := filepath.Join(releaseDir, filename)
+		if _, err := os.Stat(configPath); os.IsNotExist(err) {
+			t.Errorf("Expected config file to exist at %s", configPath)
+		}
+
+		// Verify the content
+		content, err := os.ReadFile(configPath)
+		if err != nil {
+			t.Errorf("Failed to read config file: %v", err)
+		}
+		if string(content) != configContent {
+			t.Errorf("Expected content %s, got: %s", configContent, string(content))
+		}
+	})
+
 	// Test updateCurrentSymlink
 	t.Run("UpdateCurrentSymlink", func(t *testing.T) {
 		tempDir := t.TempDir()
@@ -321,6 +363,54 @@ func TestDeploymentFunctions(t *testing.T) {
 		expected := "release-251201.1"
 		if target != expected {
 			t.Errorf("Expected symlink to point to %s, got: %s", expected, target)
+		}
+	})
+}
+
+// TestGetCurrentConfigVersionDirectoryNewRelease tests the new behavior when no releases exist
+func TestGetCurrentConfigVersionDirectoryNewRelease(t *testing.T) {
+	t.Run("CreatesNewReleaseWhenNoneExist", func(t *testing.T) {
+		tempDir := t.TempDir()
+
+		result, err := getCurrentConfigVersionDirectory(tempDir)
+
+		if err != nil {
+			t.Errorf("Expected no error, got: %v", err)
+		}
+
+		// Should return a new release directory path with today's date
+		expectedDate := time.Now().Format("2006-01-02")
+		expectedPath := filepath.Join(tempDir, fmt.Sprintf("release-%s.1", expectedDate))
+		if result != expectedPath {
+			t.Errorf("Expected %s, got: %s", expectedPath, result)
+		}
+
+		// Verify the directory doesn't exist yet (it's just the path, not created)
+		if _, err := os.Stat(result); !os.IsNotExist(err) {
+			t.Errorf("Expected directory %s to not exist yet, but it does", result)
+		}
+	})
+
+	t.Run("CreatesNewReleaseForNonExistentPath", func(t *testing.T) {
+		tempDir := t.TempDir()
+		nonExistentDir := filepath.Join(tempDir, "does-not-exist")
+
+		result, err := getCurrentConfigVersionDirectory(nonExistentDir)
+
+		if err != nil {
+			t.Errorf("Expected no error, got: %v", err)
+		}
+
+		// Should return a new release directory path with today's date
+		expectedDate := time.Now().Format("2006-01-02")
+		expectedPath := filepath.Join(nonExistentDir, fmt.Sprintf("release-%s.1", expectedDate))
+		if result != expectedPath {
+			t.Errorf("Expected %s, got: %s", expectedPath, result)
+		}
+
+		// Verify the parent directory doesn't exist yet
+		if _, err := os.Stat(nonExistentDir); !os.IsNotExist(err) {
+			t.Errorf("Expected parent directory %s to not exist yet, but it does", nonExistentDir)
 		}
 	})
 }
