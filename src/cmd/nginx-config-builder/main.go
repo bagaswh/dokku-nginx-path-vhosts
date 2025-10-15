@@ -623,7 +623,7 @@ func main() {
 		}
 	}
 
-	nginxWorkingDirectory = path.Join(dokkuAppDataRootDirectory, mustEnv("PROXY_NAME"))
+	nginxWorkingDirectory = path.Join(dokkuAppDataRootDirectory, fmt.Sprintf("%s-config", mustEnv("PROXY_NAME")))
 	nginxBackupConfigs := path.Join(nginxWorkingDirectory, "backups")
 	_ = nginxBackupConfigs
 	nginxConfigDirectory := path.Join(nginxWorkingDirectory, "conf.d")
