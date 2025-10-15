@@ -3,7 +3,6 @@
 package file_config
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"html/template"
@@ -13,34 +12,36 @@ import (
 	"strings"
 
 	"dario.cat/mergo"
+	"github.com/gliderlabs/sigil"
 	"github.com/go-playground/validator/v10"
 	"github.com/jmespath/go-jmespath"
 	"gopkg.in/yaml.v3"
 )
 
 type UpstreamServer struct {
-	Addr  string `yaml:"addr" validate:"required" json:"addr"`
-	Flags string `yaml:"flags" validate:"required" json:"flags"`
+	Addr  string            `yaml:"addr" validate:"required" json:"addr"`
+	Flags map[string]string `yaml:"flags" validate:"required" json:"flags"`
 }
 
 type UpstreamServerFlags struct {
-	Selector string `yaml:"selector" validate:"required" json:"selector"`
-	Flags    string `yaml:"flags" validate:"required" json:"flags"`
+	Selector string            `yaml:"selector" validate:"required" json:"selector"`
+	Flags    map[string]string `yaml:"flags" validate:"required" json:"flags"`
 }
 
 type UpstreamConfig struct {
 	// Select and Name are mutually exclusive
-	Select       string                `yaml:"select" validate:"required_without=Name,excluded_with=Servers" json:"select"`
-	ServersFlags []UpstreamServerFlags `yaml:"servers_flags" validate:"required_if=Select true,excluded_with=Servers" json:"servers_flags"`
+	SelectDefault       bool                  `yaml:"select_default" validate:"excluded_with=Name,excluded_with=Servers" json:"select_default"`
+	SelectDefaultPort   int                   `yaml:"select_default_port" validate:"excluded_without=SelectDefault" json:"select_default_port"`
+	DefaultServersFlags []UpstreamServerFlags `yaml:"default_servers_flags" validate:"required_if=SelectDefault true" json:"default_servers_flags"`
 
-	Name    string           `yaml:"name" validate:"required_without=Select,excluded_with=ServersFlags" json:"name"`
+	Name    string           `yaml:"name" validate:"required_if=SelectDefault false" json:"name"`
 	Servers []UpstreamServer `yaml:"servers" validate:"required_if=Name true,excluded_with=Select" json:"servers"`
 }
 
 type LocationConfig struct {
-	Modifier string `yaml:"modifier" validate:"excluded_with=Include,omitempty" json:"modifier"`
+	Modifier string `yaml:"modifier" validate:"excluded_with=Include,excluded_with=Named,omitempty" json:"modifier"`
 	Uri      string `yaml:"uri" validate:"required_without=Include,excluded_with=Include" json:"uri"`
-	Named    string `yaml:"named" validate:"omitempty,excluded_with=Uri,excluded_with=Modifier,excluded_with=Include" json:"named"`
+	Named    string `yaml:"named" validate:"omitempty,required_without=Uri,excluded_with=Include" json:"named"`
 	Body     string `yaml:"body" validate:"required_without=Include" json:"body"`
 	Include  string `yaml:"include" validate:"omitempty" json:"include"`
 }
@@ -57,9 +58,12 @@ type VariableConfig struct {
 }
 
 type CacheConfig struct {
-	Name      string   `yaml:"name" validate:"required" json:"name"`
-	CachePath string   `yaml:"proxy_cache_path" validate:"required" json:"proxy_cache_path"`
-	Flags     []string `yaml:"flags" json:"flags"`
+	Name        string            `yaml:"name" validate:"required" json:"name"`
+	CachePath   string            `yaml:"proxy_cache_path" json:"proxy_cache_path"`
+	KeyZoneSize string            `yaml:"key_zone_size" json:"key_zone_size"`
+	Flags       map[string]string `json:"flags" yaml:"flags"`
+	InMem       bool              `yaml:"in_mem" json:"in_mem" validate:"excluded_if=OnDisk true"`
+	OnDisk      bool              `yaml:"on_disk" json:"on_disk" validate:"excluded_if=InMem true"`
 }
 
 type VhostConfig struct {
@@ -75,7 +79,7 @@ type ConfigVars map[string]any
 type Config struct {
 	Vhosts []VhostConfig `yaml:"vhosts" validate:"required,dive"`
 
-	Vars ConfigVars `yaml:"vars" validate:"omitempty" json:"vars"`
+	UserVars ConfigVars `yaml:"user_vars" validate:"omitempty" json:"vars"`
 
 	Upstreams     []UpstreamConfig `yaml:"upstreams" validate:"omitempty,dive" json:"upstreams"`
 	Maps          []MapConfig      `yaml:"maps" validate:"omitempty,dive" json:"maps"`
@@ -86,15 +90,15 @@ type Config struct {
 }
 
 func registerValidations(validate *validator.Validate) {
-	validate.RegisterValidation("excluded_with", func(fl validator.FieldLevel) bool {
-		field := fl.Field()
-		if field.IsZero() {
-			return true
-		}
+	// validate.RegisterValidation("excluded_with", func(fl validator.FieldLevel) bool {
+	// 	field := fl.Field()
+	// 	if field.IsZero() {
+	// 		return true
+	// 	}
 
-		other := fl.Parent().FieldByName(fl.Param())
-		return other.IsZero()
-	})
+	// 	other := fl.Parent().FieldByName(fl.Param())
+	// 	return other.IsZero()
+	// })
 }
 
 func validateConfig(config *Config) error {
@@ -244,8 +248,8 @@ func walkConfig(value *any, path string, cb func(string, *any) bool) error {
 	return nil
 }
 
-func buildGlobalTemplateData(config *Config, tmplData map[string]map[string]any) map[string]map[string]any {
-	tmplData["vars"] = config.Vars
+func buildGlobalTemplateData(config *Config, tmplData map[string]any) map[string]any {
+	tmplData["user_vars"] = config.UserVars
 	tmplData["upstreams"] = map[string]any{}
 	tmplData["map_variables"] = map[string]any{}
 	tmplData["proxy_caches"] = map[string]any{}
@@ -256,30 +260,30 @@ func buildGlobalTemplateData(config *Config, tmplData map[string]map[string]any)
 	tmplData["named_locations"] = map[string]any{}
 
 	for _, upstream := range config.Upstreams {
-		tmplData["upstreams"][upstream.Name] = upstream.Name
+		(tmplData["upstreams"].(map[string]any))[upstream.Name] = upstream.Name
 	}
 
 	for _, mapVar := range config.Maps {
-		tmplData["map_variables"][mapVar.Variable] = mapVar.Variable
+		(tmplData["map_variables"].(map[string]any))[mapVar.Variable] = mapVar.Variable
 	}
 
 	for _, proxyCache := range config.ProxyCaches {
-		tmplData["proxy_caches"][proxyCache.Name] = proxyCache.Name
+		(tmplData["proxy_caches"].(map[string]any))[proxyCache.Name] = proxyCache.Name
 	}
 
 	for _, fastcgiCache := range config.FastcgiCaches {
-		tmplData["fastcgi_caches"][fastcgiCache.Name] = fastcgiCache.Name
+		(tmplData["fastcgi_caches"].(map[string]any))[fastcgiCache.Name] = fastcgiCache.Name
 	}
 
 	return tmplData
 }
 
-func buildVhostTemplateData(vhost *VhostConfig, tmplData map[string]map[string]any) map[string]map[string]any {
+func buildVhostTemplateData(vhost *VhostConfig, tmplData map[string]any) map[string]any {
 	if _, ok := tmplData["variables"]; !ok {
 		tmplData["variables"] = map[string]any{}
 	}
 	for _, variable := range vhost.Variables {
-		tmplData["variables"][variable.Name] = variable.Name
+		(tmplData["variables"].(map[string]any))[variable.Name] = variable.Name
 	}
 
 	if _, ok := tmplData["named_locations"]; !ok {
@@ -289,7 +293,7 @@ func buildVhostTemplateData(vhost *VhostConfig, tmplData map[string]map[string]a
 		if location.Named == "" {
 			continue
 		}
-		tmplData["named_locations"][location.Named] = location.Named
+		(tmplData["named_locations"].(map[string]any))[location.Named] = location.Named
 	}
 
 	return tmplData
@@ -298,10 +302,8 @@ func buildVhostTemplateData(vhost *VhostConfig, tmplData map[string]map[string]a
 func ResolveConfigReferences(config *Config, rawConfig any, data any, funcMap template.FuncMap) (*Config, any, error) {
 	var walkErr error
 
-	tmplOut := bytes.NewBuffer(make([]byte, 0))
-
 	vhostScopedDataKeys := []string{"variables", "named_locations"}
-	tmplData := buildGlobalTemplateData(config, make(map[string]map[string]any))
+	tmplData := buildGlobalTemplateData(config, make(map[string]any))
 	if err := mergo.Map(&tmplData, data); err != nil {
 		return nil, nil, err
 	}
@@ -329,18 +331,12 @@ func ResolveConfigReferences(config *Config, rawConfig any, data any, funcMap te
 
 		switch v := (*value).(type) {
 		case string:
-			tmpl := template.New("")
-			if funcMap != nil {
-				tmpl = tmpl.Funcs(funcMap)
-			}
-			tmpl, err := tmpl.Parse(v)
+			result, err := sigil.Execute([]byte(v), tmplData, "template")
 			if err != nil {
 				walkErr = fmt.Errorf("failed to parse template: %w", err)
 				return false
 			}
-			tmpl.Execute(tmplOut, tmplData)
-			*value = tmplOut.String()
-			tmplOut.Reset()
+			*value = result.String()
 		}
 
 		return true

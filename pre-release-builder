@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -eo pipefail
+[[ $DOKKU_TRACE ]] && set -x
+source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
+_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
+source "$_DIR/config"
+source "$_DIR/functions"
+
+trigger-nginx-custom-pre-release-builder() {
+  declare desc="${PROXY_NAME} pre-release-builder plugin trigger. Performs checks and stuffs."
+  declare trigger="nginx_custom_pre_release_builder"
+  declare APP="$1"
+  local HAS_NETWORK_CONFIG
+
+  proxy_cache_on_disk_root_path=$(fn-nginx-custom-proxy-cache-on-disk-root-path "$APP")
+  if [[ -z "$proxy_cache_on_disk_root_path" ]]; then
+    dokku_log_fail "proxy-cache-on-disk-root-path is not set. Please set it to a valid path."
+  fi
+
+  proxy_cache_in_mem_root_path=$(fn-nginx-custom-proxy-cache-in-mem-root-path "$APP")
+  if [[ -z "$proxy_cache_in_mem_root_path" ]]; then
+    dokku_log_fail "proxy-cache-in-mem-root-path is not set. Please set it to a valid path."
+  fi
+
+  fastcgi_cache_on_disk_root_path=$(fn-nginx-custom-fastcgi-cache-on-disk-root-path "$APP")
+  if [[ -z "$fastcgi_cache_on_disk_root_path" ]]; then
+    dokku_log_fail "fastcgi-cache-on-disk-root-path is not set. Please set it to a valid path."
+  fi
+
+  fastcgi_cache_in_mem_root_path=$(fn-nginx-custom-fastcgi-cache-in-mem-root-path "$APP")
+  if [[ -z "$fastcgi_cache_in_mem_root_path" ]]; then
+    dokku_log_fail "fastcgi-cache-in-mem-root-path is not set. Please set it to a valid path."
+  fi
+
+  proxy_cache_key_zone_size=$(fn-nginx-custom-proxy-cache-key-zone-size "$APP")
+  if [[ -z "$proxy_cache_key_zone_size" ]]; then
+    dokku_log_fail "proxy-cache-key-zone-size is not set. Please set it to a valid value."
+  fi
+
+  fastcgi_cache_key_zone_size=$(fn-nginx-custom-fastcgi-cache-key-zone-size "$APP")
+  if [[ -z "$fastcgi_cache_key_zone_size" ]]; then
+    dokku_log_fail "fastcgi-cache-key-zone-size is not set. Please set it to a valid value."
+  fi
+
+}
+
+trigger-nginx-custom-pre-release-builder "$@"

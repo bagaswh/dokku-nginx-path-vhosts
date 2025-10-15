@@ -9,7 +9,7 @@ source "$_DIR/functions"
 
 trigger-nginx-custom-core-post-deploy() {
   declare desc="${PROXY_NAME} core-post-deploy plugin trigger"
-  declare trigger="nginx_core_post_deploy"
+  declare trigger="nginx_custom_post_deploy"
   declare APP="$1"
   local HAS_NETWORK_CONFIG
 

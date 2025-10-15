@@ -6,36 +6,6 @@ source "$_DIR/config"
 source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
 source "$PLUGIN_CORE_AVAILABLE_PATH/common/property-functions"
 
-fn-nginx-custom-disable-custom-config() {
-  declare desc="get the configured disable-custom-config value"
-  declare APP="$1"
-
-  fn-get-property --app "$APP" "disable-custom-config"
-}
-
-fn-nginx-custom-computed-disable-custom-config() {
-  declare desc="get the computed disable-custom-config value"
-  declare APP="$1"
-
-  fn-get-property --app "$APP" --computed "disable-custom-config"
-}
-
-fn-nginx-custom-global-disable-custom-config() {
-  declare desc="get the global disable-custom-config value"
-  declare APP="$1"
-
-  fn-get-property --app "$APP" --global "disable-custom-config"
-}
-
-fn-nginx-custom-last-visited-at() {
-  declare APP="$1"
-  local LOG_PATH=$(fn-nginx-custom-access-log-path "$APP")
-
-  if [[ "$LOG_PATH" != "off" ]] && [[ "$LOG_PATH" != "/dev/null" ]] && [[ -f "$LOG_PATH" ]]; then
-    stat -c %Y "$LOG_PATH"
-  fi
-}
-
 fn-nginx-custom-log-root() {
   declare desc="get the nginx log root"
   local NGINX_LOG_ROOT="/var/log/nginx"
@@ -80,140 +50,6 @@ fn-get-property() {
   "$_DIR/nginx-property" --log-root "$(fn-nginx-custom-log-root)"  "$@"
 }
 
-nginx_vhosts_validate_single_func() {
-  declare APP="$1" FLAG="$2"
-  local NGINX_CONF="$DOKKU_ROOT/$APP/nginx.conf"
-
-  if [[ ! -f "$NGINX_CONF" ]]; then
-    dokku_log_warn_quiet "No nginx config found for ${APP}"
-    return
-  fi
-
-  if nginx_vhosts_is_valid_nginx_config_func "$APP" "in_server_block"; then
-    return
-  fi
-
-  dokku_log_warn "Failed to validate nginx config for ${APP}. Contents below..."
-  cat "$NGINX_CONF"
-
-  if [[ "$FLAG" == "--clean" ]]; then
-    nginx_vhosts_conf_clean_func "$APP"
-  fi
-}
-
-nginx_vhosts_is_valid_nginx_config_func() {
-  declare desc="checks if an app has a valid nginx config"
-  declare APP="$1" CONFIG_TYPE="$2"
-  if [[ -z "$CONFIG_TYPE" ]]; then
-    echo "CONFIG_TYPE (second argument) is required"
-    return 1
-  fi
-
-  local VALIDATE_TEMPLATE="$_DIR/templates/validate.conf.sigil"
-  local TMP_OUTPUT=$(mktemp "/tmp/dokku-${DOKKU_PID}-${FUNCNAME[0]}.XXXXXX")
-  trap "rm -rf '$TMP_OUTPUT' >/dev/null" RETURN INT TERM EXIT
-
-  CUSTOM_VALIDATE_TEMPLATE="$(plugn trigger nginx-custom-app-template-source "$APP" "validate-config")"
-  if [[ -n "$CUSTOM_VALIDATE_TEMPLATE" ]]; then
-    VALIDATE_TEMPLATE="$CUSTOM_VALIDATE_TEMPLATE"
-  fi
-
-  sigil -f "$VALIDATE_TEMPLATE" NGINX_CONF="$DOKKU_ROOT/$APP/nginx.conf" | cat -s >"$TMP_OUTPUT"
-  local NGINX_LOCATION=$(fn-nginx-custom-nginx-location)
-  sudo "$NGINX_LOCATION" -t -c "$TMP_OUTPUT" 2>/dev/null
-}
-
-nginx_vhosts_conf_clean_func() {
-  declare APP="$1"
-  local NGINX_CONF="$DOKKU_ROOT/$APP/nginx.conf"
-  dokku_log_warn "Removing invalid nginx file"
-  rm -f "$NGINX_CONF"
-}
-
-nginx_clear_config() {
-  declare desc="Remove the nginx conf file"
-  declare APP="$1"
-  rm -f "$DOKKU_ROOT/$APP/nginx.conf"
-  suppress_output fn-nginx-custom-nginx-custom-init-cmd "reload"
-}
-
-fn-nginx-custom-computed-app-path() {
-  declare desc="get the computed app-path value"
-  declare APP="$1"
-
-  local app_path=$(fn-get-property --app "$APP" --computed "app-path")
-  if [[ -z "$app_path" ]]; then
-    echo "$APP"
-  else
-    echo "$app_path"
-  fi
-}
-
-fn-nginx-custom-computed-default-app() {
-  declare desc="get the computed default app value"
-  declare APP="$1"
-
-  if [[ -z "$APP" ]]; then
-      dokku_log_fail "App name is required for fn-nginx-custom-computed-default-app"
-  fi
-
-  fn-get-property --app "$APP" --computed "default-app"
-}
-
-fn-nginx-custom-nginx-custom-init-cmd() {
-  declare desc="executes nginx init cmd if available"
-  declare CMD="$1"
-  local NGINX_INIT_NAME="nginx"
-
-  if fn-nginx-custom-uses-openresty; then
-    NGINX_INIT_NAME="openresty"
-  fi
-
-  case "$DOKKU_DISTRO" in
-    debian | ubuntu)
-      if [[ -x /bin/systemctl ]] || [[ -x /usr/bin/systemctl ]]; then
-        local systemctl_path="/bin/systemctl"
-        [[ -x /usr/bin/systemctl ]] && systemctl_path="/usr/bin/systemctl"
-        sudo "$systemctl_path" "$CMD" "$NGINX_INIT_NAME"
-      else
-        sudo "/etc/init.d/$NGINX_INIT_NAME" "$CMD"
-      fi
-      ;;
-    arch)
-      sudo systemctl "$CMD" "$NGINX_INIT_NAME"
-      ;;
-  esac
-}
-
-fn-nginx-custom-nginx-custom-location() {
-  declare desc="check that nginx is at the expected location and return it"
-  fn-nginx-custom-nginx-location
-}
-
-fn-nginx-custom-nginx-custom-is-running() {
-  declare desc="check if nginx is running"
-  local NGINX_INIT_NAME="nginx"
-
-  if fn-nginx-custom-uses-openresty; then
-    NGINX_INIT_NAME="openresty"
-  fi
-
-  case "$DOKKU_DISTRO" in
-    debian | ubuntu)
-      if [[ -x /bin/systemctl ]] || [[ -x /usr/bin/systemctl ]]; then
-        local systemctl_path="/bin/systemctl"
-        [[ -x /usr/bin/systemctl ]] && systemctl_path="/usr/bin/systemctl"
-        sudo "$systemctl_path" is-active --quiet "$NGINX_INIT_NAME" 2>/dev/null
-      else
-        sudo service "$NGINX_INIT_NAME" status >/dev/null 2>&1
-      fi
-      ;;
-    arch)
-      sudo systemctl is-active --quiet "$NGINX_INIT_NAME" 2>/dev/null
-      ;;
-  esac
-}
-
 fn-nginx-custom-config-file() {
   declare desc="retrieves config file path from config-file property"
   declare APP="$1"
@@ -227,4 +63,52 @@ fn-nginx-custom-config-files-root-dir() {
   if [[ -z "$dir" ]]; then
     echo "$DOKKU_ROOT/$APP"
   fi
+}
+
+fn-nginx-custom-proxy-cache-on-disk-root-path() {
+  declare desc="retrieves proxy cache on disk root path from proxy-cache-on-disk-root-path property"
+  declare APP="$1"
+  fn-get-property --app "$APP" --global "proxy-cache-on-disk-root-path"
+}
+
+fn-nginx-custom-proxy-cache-in-mem-root-path() {
+  declare desc="retrieves proxy cache in memory root path from proxy-cache-in-mem-root-path property"
+  declare APP="$1"
+  fn-get-property --app "$APP" --global "proxy-cache-in-mem-root-path"
+}
+
+fn-nginx-custom-fastcgi-cache-on-disk-root-path() {
+  declare desc="retrieves fastcgi cache on disk root path from fastcgi-cache-on-disk-root-path property"
+  declare APP="$1"
+ fn-get-property --app "$APP" --global "fastcgi-cache-on-disk-root-path"
+}
+
+fn-nginx-custom-fastcgi-cache-in-mem-root-path() {
+  declare desc="retrieves fastcgi cache in memory root path from fastcgi-cache-in-mem-root-path property"
+  declare APP="$1"
+  fn-get-property --app "$APP" --global "fastcgi-cache-in-mem-root-path"
+}
+
+fn-nginx-custom-proxy-cache-default-flags() {
+  declare desc="retrieves proxy cache default flags from proxy-cache-default-flags property"
+  declare APP="$1"
+  fn-get-property --app "$APP" --global "proxy-cache-default-flags"
+}
+
+fn-nginx-custom-fastcgi-cache-default-flags() {
+  declare desc="retrieves fastcgi cache default flags from fastcgi-cache-default-flags property"
+  declare APP="$1"
+  fn-get-property --app "$APP" --global "fastcgi-cache-default-flags"
+}
+
+fn-nginx-custom-proxy-cache-key-zone-size() {
+  declare desc="retrieves proxy cache key zone size from proxy-cache-key-zone-size property"
+  declare APP="$1"
+  fn-get-property --app "$APP" --global "proxy-cache-key-zone-size"
+}
+
+fn-nginx-custom-fastcgi-cache-key-zone-size() {
+  declare desc="retrieves fastcgi cache key zone size from fastcgi-cache-key-zone-size property"
+  declare APP="$1"
+  fn-get-property --app "$APP" --global "fastcgi-cache-key-zone-size"
 }
