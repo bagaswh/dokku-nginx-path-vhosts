@@ -15,9 +15,9 @@ func TestGetCurrentConfigVersionDirectory(t *testing.T) {
 
 		// Create test release directories with date/sequence format
 		releaseDirs := []string{
-			"release-251201.1", // 25/12/01, sequence 1
-			"release-251201.2", // 25/12/01, sequence 2
-			"release-251201.3", // 25/12/01, sequence 3 (latest)
+			"release-20011225.1", // 2001/12/25, sequence 1
+			"release-20011225.2", // 2001/12/25, sequence 2
+			"release-20011225.3", // 2001/12/25, sequence 3 (latest)
 		}
 
 		for _, dir := range releaseDirs {
@@ -41,7 +41,7 @@ func TestGetCurrentConfigVersionDirectory(t *testing.T) {
 		}
 
 		// Should return the latest directory (highest sequence)
-		expected := filepath.Join(tempDir, "release-251201.3")
+		expected := filepath.Join(tempDir, "release-20011225.3")
 		if result != expected {
 			t.Errorf("Expected %s, got: %s", expected, result)
 		}
@@ -58,7 +58,7 @@ func TestGetCurrentConfigVersionDirectory(t *testing.T) {
 		}
 
 		// Should return a new release directory path with today's date
-		expectedDate := time.Now().Format("2006-01-02")
+		expectedDate := time.Now().Format("20060102")
 		expectedPath := filepath.Join(emptyDir, fmt.Sprintf("release-%s.1", expectedDate))
 		if result != expectedPath {
 			t.Errorf("Expected %s, got: %s", expectedPath, result)
@@ -78,7 +78,7 @@ func TestGetCurrentConfigVersionDirectory(t *testing.T) {
 		}
 
 		// Should return a new release directory path with today's date
-		expectedDate := time.Now().Format("2006-01-02")
+		expectedDate := time.Now().Format("20060102")
 		expectedPath := filepath.Join(nonExistentDir, fmt.Sprintf("release-%s.1", expectedDate))
 		if result != expectedPath {
 			t.Errorf("Expected %s, got: %s", expectedPath, result)
@@ -91,8 +91,8 @@ func TestGetCurrentConfigVersionDirectory(t *testing.T) {
 
 		// Create release directories with proper format
 		releaseDirs := []string{
-			"release-251201.1",
-			"release-251201.2",
+			"release-20011225.1",
+			"release-20011225.2",
 		}
 
 		for _, dir := range releaseDirs {
@@ -122,7 +122,7 @@ func TestGetCurrentConfigVersionDirectory(t *testing.T) {
 		}
 
 		// Should return the latest directory (highest sequence)
-		expected := filepath.Join(mixedDir, "release-251201.2")
+		expected := filepath.Join(mixedDir, "release-20011225.2")
 		if result != expected {
 			t.Errorf("Expected %s, got: %s", expected, result)
 		}
@@ -134,9 +134,9 @@ func TestGetCurrentConfigVersionDirectory(t *testing.T) {
 
 		// Create release directories with different dates
 		releaseDirs := []string{
-			"release-241201.5",  // 24/12/01, sequence 5
-			"release-251201.1",  // 25/12/01, sequence 1 (latest date)
-			"release-231201.10", // 23/12/01, sequence 10
+			"release-20011224.5",  // 2001/12/24, sequence 5
+			"release-20011225.1",  // 2001/12/25, sequence 1 (latest date)
+			"release-20011223.10", // 2001/12/23, sequence 10
 		}
 
 		for _, dir := range releaseDirs {
@@ -152,8 +152,8 @@ func TestGetCurrentConfigVersionDirectory(t *testing.T) {
 			t.Errorf("Expected no error, got: %v", err)
 		}
 
-		// Should return the latest date (251201.1)
-		expected := filepath.Join(dateDir, "release-251201.1")
+		// Should return the latest date (20011225.1)
+		expected := filepath.Join(dateDir, "release-20011225.1")
 		if result != expected {
 			t.Errorf("Expected %s, got: %s", expected, result)
 		}
@@ -168,8 +168,8 @@ func TestGetCurrentConfigVersionDirectory(t *testing.T) {
 			"release-1.0.0",         // Wrong format
 			"release-2.0.0-beta",    // Wrong format
 			"release-3.0.0-alpha.1", // Wrong format
-			"release-251201",        // Missing sequence
-			"release-251201.",       // Missing sequence number
+			"release-20011225",      // Missing sequence
+			"release-20011225.",     // Missing sequence number
 		}
 
 		for _, dir := range invalidDirs {
@@ -200,11 +200,11 @@ func TestGetCurrentConfigVersionDirectoryComplex(t *testing.T) {
 
 		// Create test release directories with various dates and sequences
 		releaseDirs := []string{
-			"release-241201.1",  // 24/12/01, sequence 1
-			"release-241201.3",  // 24/12/01, sequence 3
-			"release-251201.1",  // 25/12/01, sequence 1 (latest date)
-			"release-251201.2",  // 25/12/01, sequence 2 (latest overall)
-			"release-231201.10", // 23/12/01, sequence 10 (older date)
+			"release-20011224.1",  // 24/12/01, sequence 1
+			"release-20011224.3",  // 24/12/01, sequence 3
+			"release-20011225.1",  // 25/12/01, sequence 1 (latest date)
+			"release-20011225.2",  // 25/12/01, sequence 2 (latest overall)
+			"release-20011223.10", // 23/12/01, sequence 10 (older date)
 		}
 
 		for _, dir := range releaseDirs {
@@ -221,7 +221,7 @@ func TestGetCurrentConfigVersionDirectoryComplex(t *testing.T) {
 		}
 
 		// Should return the latest directory (251201.2)
-		expected := filepath.Join(tempDir, "release-251201.2")
+		expected := filepath.Join(tempDir, "release-20011225.2")
 		if result != expected {
 			t.Errorf("Expected %s, got: %s", expected, result)
 		}
@@ -252,13 +252,13 @@ func TestDeploymentFunctions(t *testing.T) {
 		}
 
 		// Test case 2: Create a current symlink
-		releaseDir := filepath.Join(tempDir, "release-251201.1")
+		releaseDir := filepath.Join(tempDir, "release-20011225.1")
 		if err := os.MkdirAll(releaseDir, 0755); err != nil {
 			t.Fatalf("Failed to create release directory: %v", err)
 		}
 
 		currentSymlink := filepath.Join(tempDir, "current")
-		if err := os.Symlink("release-251201.1", currentSymlink); err != nil {
+		if err := os.Symlink("release-20011225.1", currentSymlink); err != nil {
 			t.Fatalf("Failed to create symlink: %v", err)
 		}
 
@@ -266,7 +266,7 @@ func TestDeploymentFunctions(t *testing.T) {
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
-		expected := filepath.Join(tempDir, "release-251201.1")
+		expected := filepath.Join(tempDir, "release-20011225.1")
 		if prevDir != expected {
 			t.Errorf("Expected %s, got: %s", expected, prevDir)
 		}
@@ -275,7 +275,7 @@ func TestDeploymentFunctions(t *testing.T) {
 	// Test copyConfigToRelease
 	t.Run("CopyConfigToRelease", func(t *testing.T) {
 		tempDir := t.TempDir()
-		releaseDir := filepath.Join(tempDir, "release-251201.1")
+		releaseDir := filepath.Join(tempDir, "release-20011225.1")
 		configContent := "test config content"
 		filename := "test.conf"
 
@@ -303,7 +303,7 @@ func TestDeploymentFunctions(t *testing.T) {
 	// Test copyConfigToRelease with nested directories
 	t.Run("CopyConfigToReleaseWithNestedDirs", func(t *testing.T) {
 		tempDir := t.TempDir()
-		releaseDir := filepath.Join(tempDir, "release-251201.1")
+		releaseDir := filepath.Join(tempDir, "release-20011225.1")
 		configContent := "vhost config content"
 		filename := "vhosts/example.com/vhost.conf"
 
@@ -337,7 +337,7 @@ func TestDeploymentFunctions(t *testing.T) {
 	// Test updateCurrentSymlink
 	t.Run("UpdateCurrentSymlink", func(t *testing.T) {
 		tempDir := t.TempDir()
-		releaseDir := filepath.Join(tempDir, "release-251201.1")
+		releaseDir := filepath.Join(tempDir, "release-20011225.1")
 
 		// Create the release directory
 		if err := os.MkdirAll(releaseDir, 0755); err != nil {
@@ -360,7 +360,7 @@ func TestDeploymentFunctions(t *testing.T) {
 		if err != nil {
 			t.Errorf("Failed to read symlink: %v", err)
 		}
-		expected := "release-251201.1"
+		expected := "release-20011225.1"
 		if target != expected {
 			t.Errorf("Expected symlink to point to %s, got: %s", expected, target)
 		}
@@ -379,7 +379,7 @@ func TestGetCurrentConfigVersionDirectoryNewRelease(t *testing.T) {
 		}
 
 		// Should return a new release directory path with today's date
-		expectedDate := time.Now().Format("2006-01-02")
+		expectedDate := time.Now().Format("20060102")
 		expectedPath := filepath.Join(tempDir, fmt.Sprintf("release-%s.1", expectedDate))
 		if result != expectedPath {
 			t.Errorf("Expected %s, got: %s", expectedPath, result)
@@ -402,7 +402,7 @@ func TestGetCurrentConfigVersionDirectoryNewRelease(t *testing.T) {
 		}
 
 		// Should return a new release directory path with today's date
-		expectedDate := time.Now().Format("2006-01-02")
+		expectedDate := time.Now().Format("20060102")
 		expectedPath := filepath.Join(nonExistentDir, fmt.Sprintf("release-%s.1", expectedDate))
 		if result != expectedPath {
 			t.Errorf("Expected %s, got: %s", expectedPath, result)

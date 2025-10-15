@@ -467,8 +467,8 @@ func getCurrentConfigVersionDirectory(nginxConfigDirectory string) (string, erro
 	}
 
 	if len(files) == 0 {
-		ddmmyy := time.Now().Format("2006-01-02")
-		return fmt.Sprintf("%s/release-%s.1", nginxConfigDirectory, ddmmyy), nil
+		yyyymmdd := time.Now().Format("20060102")
+		return fmt.Sprintf("%s/release-%s.1", nginxConfigDirectory, yyyymmdd), nil
 	}
 
 	var latestDir string
