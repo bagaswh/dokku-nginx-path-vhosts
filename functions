@@ -203,8 +203,8 @@ nginx_build_config() {
   export FASTCGI_CACHE_IN_MEM_ROOT_PATH="$(fn-nginx-custom-fastcgi-cache-in-mem-root-path "$APP")"
   export PROXY_CACHE_DEFAULT_FLAGS="$(fn-nginx-custom-proxy-cache-default-flags "$APP")"
   export FASTCGI_CACHE_DEFAULT_FLAGS="$(fn-nginx-custom-fastcgi-cache-default-flags "$APP")"
-  export PROXY_CACHE_KEY_ZONE_SIZE="$(fn-nginx-custom-proxy-cache-key-zone-size "$APP")"
-  export FASTCGI_CACHE_KEY_ZONE_SIZE="$(fn-nginx-custom-fastcgi-cache-key-zone-size "$APP")"
+  export PROXY_CACHE_DEFAULT_KEY_ZONE_SIZE="$(fn-nginx-custom-proxy-cache-default-key-zone-size "$APP")"
+  export FASTCGI_CACHE_DEFAULT_KEY_ZONE_SIZE="$(fn-nginx-custom-fastcgi-cache-default-key-zone-size "$APP")"
   "$_DIR/nginx-config-builder" \
     -app-name "$APP" \
     -config-file-path "${DATA_DIRECTORY}/app-$APP/$(fn-nginx-custom-config-file "$APP")" \
