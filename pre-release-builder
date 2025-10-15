@@ -33,14 +33,14 @@ trigger-nginx-custom-pre-release-builder() {
     dokku_log_fail "fastcgi-cache-in-mem-root-path is not set. Please set it to a valid path."
   fi
 
-  proxy_cache_key_zone_size=$(fn-nginx-custom-proxy-cache-key-zone-size "$APP")
+  proxy_cache_key_zone_size=$(fn-nginx-custom-proxy-cache-default-key-zone-size "$APP")
   if [[ -z "$proxy_cache_key_zone_size" ]]; then
-    dokku_log_fail "proxy-cache-key-zone-size is not set. Please set it to a valid value."
+    dokku_log_fail "proxy-cache-default-key-zone-size is not set. Please set it to a valid value."
   fi
 
-  fastcgi_cache_key_zone_size=$(fn-nginx-custom-fastcgi-cache-key-zone-size "$APP")
+  fastcgi_cache_key_zone_size=$(fn-nginx-custom-fastcgi-cache-default-key-zone-size "$APP")
   if [[ -z "$fastcgi_cache_key_zone_size" ]]; then
-    dokku_log_fail "fastcgi-cache-key-zone-size is not set. Please set it to a valid value."
+    dokku_log_fail "fastcgi-cache-default-key-zone-size is not set. Please set it to a valid value."
   fi
 
 }
