@@ -299,6 +299,7 @@ func buildProxyCacheConfig(appName string, buildProxyCacheCfgData buildProxyCach
 		if cfgStr != "" {
 			cfgStr += "\n"
 		}
+
 		cfgStr += fmt.Sprintf("proxy_cache_path %s keys_zone=%s:%s %s;", cachePath, cacheName, keyZoneSize, flagStr)
 	}
 
@@ -606,10 +607,12 @@ func main() {
 	var configFilePath string
 	var dokkuAppDataRootDirectory string
 	var nginxTestCommand string
+	var withoutNginxTest bool
 	flag.StringVar(&appName, "app-name", "", "app name")
 	flag.StringVar(&configFilePath, "config-file-path", "", "path to config file")
 	flag.StringVar(&dokkuAppDataRootDirectory, "dokku-data-root-directory", "", "dokku data root directory")
 	flag.StringVar(&nginxTestCommand, "nginx-test-command", "nginx -t", "nginx test command")
+	flag.BoolVar(&withoutNginxTest, "without-nginx-test", false, "do not run nginx test")
 
 	flag.Parse()
 
@@ -760,15 +763,17 @@ func main() {
 	}
 
 	// Test nginx configuration
-	if err := testNginxConfig(nginxTestCommand); err != nil {
-		log.Printf("nginx config test failed, rolling back: %v", err)
+	if !withoutNginxTest {
+		if err := testNginxConfig(nginxTestCommand); err != nil {
+			log.Printf("nginx config test failed, rolling back: %v", err)
 
-		// Rollback to previous version
-		if rollbackErr := rollbackToPrevious(nginxConfigDirectory, previousDir); rollbackErr != nil {
-			log.Fatalln("failed to rollback to previous version:", rollbackErr)
+			// Rollback to previous version
+			if rollbackErr := rollbackToPrevious(nginxConfigDirectory, previousDir); rollbackErr != nil {
+				log.Fatalln("failed to rollback to previous version:", rollbackErr)
+			}
+
+			log.Fatalln("nginx config test failed, rolled back to previous version:", err)
 		}
-
-		log.Fatalln("nginx config test failed, rolled back to previous version:", err)
 	}
 
 	log.Println("nginx configuration deployed successfully")

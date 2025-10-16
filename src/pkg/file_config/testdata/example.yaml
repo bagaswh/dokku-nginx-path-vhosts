@@ -90,18 +90,18 @@ maps:
         value: "TLSv1.2 TLSv1.3"
 
 proxy_caches:
-  - name: inmem
-    inmem: true
-  - name: ondisk
-    ondisk: true
+  - name: in_mem
+    in_mem: true
+  - name: on_disk
+    on_disk: true
 
 fastcgi_caches:
-  - name: inmem
-    inmem: true
+  - name: in_mem
+    in_mem: true
     key_zone_size: 5m
 
-  - name: ondisk
-    ondisk: true
+  - name: on_disk
+    on_disk: true
 
 in_server_block: |
   ssl_certificate /etc/letsencrypt/live/api.example.com/fullchain.pem;
@@ -122,7 +122,7 @@ vhosts:
       - modifier: ""
         uri: "/api/v1/"
         body: |
-          proxy_cache {{ .proxy_caches.inmem }};
+          proxy_cache {{ .proxy_caches.in_mem }};
           proxy_pass http://{{ .upstreams.default }};
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -165,7 +165,7 @@ vhosts:
       - modifier: ""
         uri: "/"
         body: |
-          proxy_cache {{ .proxy_caches.ondisk }};
+          proxy_cache {{ .proxy_caches.on_disk }};
           proxy_cache_use_stale error timeout http_500 http_502 http_503 http_504;
           proxy_cache_valid 200 60m;
           proxy_cache_valid 404 1m;
@@ -174,7 +174,7 @@ vhosts:
       - modifier: "^~"
         uri: "/assets/"
         body: |
-          proxy_cache {{ .proxy_caches.ondisk }};
+          proxy_cache {{ .proxy_caches.on_disk }};
           proxy_cache_use_stale error timeout http_500 http_502 http_503 http_504;
           proxy_cache_valid 200 24h;
           proxy_cache_valid 404 1m;
@@ -191,7 +191,7 @@ vhosts:
       - modifier: "~"
         uri: "\\.php$"
         body: |
-          fastcgi_cache {{ .fastcgi_caches.inmem }};
+          fastcgi_cache {{ .fastcgi_caches.in_mem }};
           fastcgi_cache_valid 200 60m;
           fastcgi_cache_use_stale error timeout http_500;
           fastcgi_pass {{ .upstreams.php_fpm }};
